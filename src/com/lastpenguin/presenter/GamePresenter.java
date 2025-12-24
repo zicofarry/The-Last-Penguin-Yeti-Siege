@@ -1,7 +1,5 @@
 /**
  * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
- * Email: mhmmdzmslm36@gmail.com
- * GitHub: https://github.com/zicofarry
  */
 package com.lastpenguin.presenter;
 
@@ -9,11 +7,8 @@ import com.lastpenguin.model.*;
 import com.lastpenguin.view.GamePanel;
 import java.util.*;
 import javax.swing.Timer;
+import java.awt.Rectangle;
 
-/**
- * Core game engine logic.
- * Manages interactions between Player, Yeti, and Projectiles.
- */
 public class GamePresenter {
     private Player player;
     private GameSettings settings;
@@ -26,9 +21,6 @@ public class GamePresenter {
     private int spawnTimer = 0;
     private int shootCooldown = 0;
 
-    /**
-     * Updated constructor to match Main.java requirements.
-     */
     public GamePresenter(Player player, GamePanel view, GameSettings settings) {
         this.player = player;
         this.view = view;
@@ -38,20 +30,37 @@ public class GamePresenter {
         spawnObstacles();
     }
 
+    /**
+     * Spawns obstacles randomly while ensuring they don't overlap with the player's start.
+     */
     private void spawnObstacles() {
-        for(int i=0; i<4; i++) obstacles.add(new Obstacle(rand.nextInt(600)+100, rand.nextInt(200)+50, 80, 80));
+        Rectangle playerSafeZone = new Rectangle(player.getX() - 50, player.getY() - 50, 150, 150);
+        for(int i = 0; i < 5; i++) {
+            int ox, oy;
+            Rectangle obsRect;
+            do {
+                ox = rand.nextInt(600) + 100;
+                oy = rand.nextInt(350) + 50;
+                obsRect = new Rectangle(ox, oy, 80, 80);
+            } while (obsRect.intersects(playerSafeZone)); // Retry if spawning on player
+            
+            obstacles.add(new Obstacle(ox, oy, 80, 80));
+        }
     }
 
     public void update() {
-        if (input.isPaused()) return;
+        if (!player.isAlive() || input.isPaused()) return;
 
         handleMovement();
         handleCombat();
         checkCollisions();
         
+        // Difficulty-based Spawn Rate
+        int spawnRate = settings.getDifficulty().equals(GameSettings.EASY) ? 240 : 120;
         spawnTimer++;
-        if (spawnTimer > 180) {
-            yetis.add(new Yeti(rand.nextInt(700), 610, 1));
+        if (spawnTimer > spawnRate) {
+            int diffVal = settings.getDifficulty().equals(GameSettings.EASY) ? 1 : 2;
+            yetis.add(new Yeti(rand.nextInt(700), 580, diffVal)); 
             spawnTimer = 0;
         }
         view.repaint();
@@ -61,12 +70,40 @@ public class GamePresenter {
         int dx = 0, dy = 0;
         if (input.isUp()) dy--; if (input.isDown()) dy++;
         if (input.isLeft()) dx--; if (input.isRight()) dx++;
-        player.move(dx, dy);
+        
+        if (dx == 0 && dy == 0) return;
+
+        // Player vs Obstacle Collision
+        Rectangle nextBounds = new Rectangle(player.getX() + dx * 5, player.getY() + dy * 5, 40, 40);
+        boolean blocked = false;
+        for (Obstacle o : obstacles) {
+            if (nextBounds.intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
+                blocked = true; break;
+            }
+        }
+        if (!blocked) player.move(dx, dy);
+
+        // Yeti vs Obstacle Collision
+        for (Yeti y : yetis) {
+            int oldX = y.getX();
+            int oldY = y.getY();
+            y.trackPlayer(player.getX(), player.getY());
+            
+            for (Obstacle o : obstacles) {
+                if (y.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
+                    // Simple collision response: revert move if blocked
+                    y.moveBack(y.getX() - oldX, y.getY() - oldY);
+                    break;
+                }
+            }
+        }
     }
 
     private void handleCombat() {
+        // Player shooting based on last move direction (X key)
         if (input.isShooting() && player.getRemainingBullets() > 0 && shootCooldown == 0) {
-            projectiles.add(new Projectile(player.getX() + 20, player.getY(), Projectile.PLAYER_TYPE));
+            projectiles.add(new Projectile(player.getX() + 15, player.getY() + 15, 
+                                          player.getLastDx(), player.getLastDy(), Projectile.PLAYER_TYPE));
             player.useBullet();
             shootCooldown = 20;
         }
@@ -77,30 +114,39 @@ public class GamePresenter {
             Projectile p = it.next();
             p.update();
             if (!p.isActive()) {
-                // Scavenge logic
-                if (p.getOwner().equals(Projectile.YETI_TYPE) && p.getY() < 0) {
-                    player.addBullets(1);
-                } 
-                // Tracking missed shots for the player
-                else if (p.getOwner().equals(Projectile.PLAYER_TYPE) && p.getY() < 0) {
-                    player.registerMiss();
+                if (p.getOwner().equals(Projectile.YETI_TYPE)) player.addBullets(1);
+                it.remove(); continue;
+            }
+            // Projectile vs Obstacle
+            for (Obstacle o : obstacles) {
+                if (p.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
+                    p.setActive(false); break;
                 }
-                it.remove();
             }
         }
 
+        // Yeti Shooting Aggression based on Difficulty
+        int shootChance = settings.getDifficulty().equals(GameSettings.EASY) ? 300 : 150;
         for (Yeti y : yetis) {
-            if (rand.nextInt(200) < 2) {
-                projectiles.add(new Projectile(y.getX() + 30, y.getY(), Projectile.YETI_TYPE));
+            if (rand.nextInt(shootChance) < 2) {
+                int vx = (player.getX() > y.getX()) ? 1 : -1;
+                int vy = (player.getY() > y.getY()) ? -1 : 1;
+                projectiles.add(new Projectile(y.getX() + 30, y.getY() + 30, vx, vy, Projectile.YETI_TYPE));
             }
         }
     }
 
     private void checkCollisions() {
+        Rectangle pBounds = player.getBounds();
+        for (Yeti y : yetis) {
+            if (pBounds.intersects(y.getBounds())) { player.die(); return; }
+        }
         for (Projectile p : projectiles) {
-            if (p.getOwner().equals(Projectile.PLAYER_TYPE)) {
+            if (p.getOwner().equals(Projectile.YETI_TYPE)) {
+                if (p.getBounds().intersects(pBounds)) player.die();
+            } else {
                 for (Yeti y : yetis) {
-                    if (Math.abs(p.getX() - y.getX()) < 50 && Math.abs(p.getY() - y.getY()) < 50) {
+                    if (p.getBounds().intersects(y.getBounds())) {
                         y.takeDamage(50); p.setActive(false);
                         if (!y.isAlive()) player.registerKill(100);
                     }

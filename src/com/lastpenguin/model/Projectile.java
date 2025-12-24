@@ -1,27 +1,34 @@
 package com.lastpenguin.model;
 
+import java.awt.Rectangle;
+
 /**
- * Represents projectiles fired by either the Player or Yeti.
+ * Projectile that moves in a specific direction (vx, vy).
  */
 public class Projectile {
     public static final String PLAYER_TYPE = "PLAYER";
     public static final String YETI_TYPE = "YETI";
 
-    private int x, y, speed;
+    private int x, y, vx, vy;
     private String owner;
     private boolean active = true;
 
-    public Projectile(int x, int y, String owner) {
+    public Projectile(int x, int y, int vx, int vy, String owner) {
         this.x = x;
         this.y = y;
+        this.vx = vx * 8; 
+        this.vy = vy * 8;
         this.owner = owner;
-        // Player shoots up, Yeti shoots from below moving up
-        this.speed = owner.equals(PLAYER_TYPE) ? -10 : -6; 
     }
 
     public void update() {
-        this.y += speed;
-        if (y < -50 || y > 650) active = false;
+        this.x += vx;
+        this.y += vy;
+        if (y < -50 || y > 650 || x < -50 || x > 850) active = false;
+    }
+
+    public Rectangle getBounds() {
+        return new Rectangle(x, y, 12, 12);
     }
 
     public boolean isActive() { return active; }

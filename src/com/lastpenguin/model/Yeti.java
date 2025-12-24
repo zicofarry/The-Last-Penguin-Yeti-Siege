@@ -1,45 +1,28 @@
 /**
  * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
- * Email: mhmmdzmslm36@gmail.com
- * GitHub: https://github.com/zicofarry
  */
 package com.lastpenguin.model;
 
+import java.awt.Rectangle;
+
 /**
- * Represents the Yeti enemy in the game.
- * Handles enemy AI movement, health points, and status.
- * * @author Muhammad 'Azmi Salam
- * @version 1.0
- * @since December 2025
+ * Represents the Yeti enemy.
  */
 public class Yeti {
-    private int health;
-    private int x, y;
-    private int speed;
-    private boolean isAlive;
+    private int x, y, health, speed;
+    private boolean alive = true;
 
-    /**
-     * Constructs a Yeti at a specific location.
-     * @param x Initial X coordinate.
-     * @param y Initial Y coordinate.
-     * @param difficulty Adjusted speed based on game difficulty.
-     */
-    public Yeti(int x, int y, int difficulty) {
+    public Yeti(int x, int y, int difficultyValue) {
         this.x = x;
         this.y = y;
-        this.health = 50; // Base health
-        this.speed = 1 + difficulty; // Faster at higher difficulties
-        this.isAlive = true;
+        this.health = 50;
+        // Adjust speed based on difficulty: Easy = 1, Medium = 2, Hard = 3
+        this.speed = difficultyValue;
     }
 
-    /**
-     * Logic for the Yeti to chase the player.
-     * @param playerX Target X coordinate (Player's X).
-     * @param playerY Target Y coordinate (Player's Y).
-     */
     public void trackPlayer(int playerX, int playerY) {
-        if (!isAlive) return;
-
+        if (!alive) return;
+        // Basic movement logic; actual collision checked in Presenter
         if (this.x < playerX) this.x += speed;
         else if (this.x > playerX) this.x -= speed;
 
@@ -48,19 +31,24 @@ public class Yeti {
     }
 
     /**
-     * Reduces Yeti health when hit by a projectile.
-     * @param damage Amount of health to subtract.
+     * Reverts movement if a collision is detected.
      */
-    public void takeDamage(int damage) {
-        this.health -= damage;
-        if (this.health <= 0) {
-            this.isAlive = false;
-        }
+    public void moveBack(int dx, int dy) {
+        this.x -= dx;
+        this.y -= dy;
     }
 
-    // Standard Getters
+    public Rectangle getBounds() {
+        return new Rectangle(x, y, 60, 60);
+    }
+
+    public void takeDamage(int damage) {
+        this.health -= damage;
+        if (this.health <= 0) alive = false;
+    }
+
+    public boolean isAlive() { return alive; }
     public int getX() { return x; }
     public int getY() { return y; }
-    public boolean isAlive() { return isAlive; }
-    public int getHealth() { return health; }
+    public int getSpeed() { return speed; }
 }

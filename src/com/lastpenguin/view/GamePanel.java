@@ -1,20 +1,12 @@
-/**
- * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
- * Email: mhmmdzmslm36@gmail.com
- * GitHub: https://github.com/zicofarry
- */
 package com.lastpenguin.view;
 
 import com.lastpenguin.model.*;
 import com.lastpenguin.presenter.GamePresenter;
-import com.lastpenguin.presenter.InputHandler; // TAMBAHKAN INI
+import com.lastpenguin.presenter.InputHandler;
 import javax.swing.JPanel;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
-/**
- * Main rendering surface for the game arena.
- */
 public class GamePanel extends JPanel {
     private GamePresenter presenter;
     private HUD hud = new HUD();
@@ -42,44 +34,45 @@ public class GamePanel extends JPanel {
         super.paintComponent(g);
         if (presenter == null) return;
 
-        // Draw Arena
         if (arenaImg != null) g.drawImage(arenaImg, 0, 0, 800, 600, null);
 
-        // Draw Obstacles
         for (Obstacle o : presenter.getObstacles()) 
             g.drawImage(obstacleImg, o.getX(), o.getY(), o.getWidth(), o.getHeight(), null);
 
-        // Draw Projectiles
         for (Projectile p : presenter.getProjectiles()) {
             g.setColor(p.getOwner().equals(Projectile.YETI_TYPE) ? Color.CYAN : Color.YELLOW);
             g.fillOval(p.getX(), p.getY(), 12, 12);
         }
 
-        // Draw Yeti
         for (Yeti y : presenter.getYetis()) {
             if (yetiSheet != null) {
-                BufferedImage subYeti = yetiSheet.getSubimage(0, 0, 200, 200); 
-                g.drawImage(subYeti, y.getX(), y.getY(), 80, 80, null);
+                BufferedImage subYeti = yetiSheet.getSubimage(0, 0, 150, 150); 
+                g.drawImage(subYeti, y.getX(), y.getY(), 75, 75, null);
             }
         }
 
-        drawPenguin(g);
+        if (presenter.getPlayer().isAlive()) {
+            drawPenguin(g);
+        } else {
+            g.setColor(new Color(255, 0, 0, 150));
+            g.fillRect(0, 0, 800, 600);
+            g.setColor(Color.WHITE);
+            g.setFont(new Font("Arial", Font.BOLD, 50));
+            g.drawString("GAME OVER", 250, 300);
+        }
+
         hud.draw(g, presenter.getPlayer());
 
-        // Pause Overlay
         if (presenter.getInput().isPaused()) {
-            g.setColor(new Color(0,0,0,150)); 
-            g.fillRect(0,0,800,600);
-            g.setColor(Color.WHITE); 
-            g.setFont(new Font("Arial", Font.BOLD, 50));
+            g.setColor(new Color(0,0,0,150)); g.fillRect(0,0,800,600);
+            g.setColor(Color.WHITE); g.setFont(new Font("Arial", Font.BOLD, 50));
             g.drawString("PAUSED", 300, 300);
         }
     }
 
     private void drawPenguin(Graphics g) {
         if (penguinSheet == null) return;
-
-        int row = 0; // 0:Down, 1:Left, 2:Right, 3:Up
+        int row = 0; 
         InputHandler in = presenter.getInput();
         if (in.isLeft()) row = 1; else if (in.isRight()) row = 2;
         else if (in.isUp()) row = 3; else if (in.isDown()) row = 0;
