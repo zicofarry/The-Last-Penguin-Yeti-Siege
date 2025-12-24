@@ -1,0 +1,95 @@
+/**
+ * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
+ * Email: mhmmdzmslm36@gmail.com
+ * GitHub: https://github.com/zicofarry
+ */
+package com.lastpenguin.view;
+
+import com.lastpenguin.model.*;
+import com.lastpenguin.presenter.GamePresenter;
+import com.lastpenguin.presenter.InputHandler; // TAMBAHKAN INI
+import javax.swing.JPanel;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+
+/**
+ * Main rendering surface for the game arena.
+ */
+public class GamePanel extends JPanel {
+    private GamePresenter presenter;
+    private HUD hud = new HUD();
+    private BufferedImage arenaImg, penguinSheet, yetiSheet, obstacleImg;
+    private int spriteNum = 0, spriteCounter = 0;
+
+    public GamePanel() {
+        setPreferredSize(new Dimension(800, 600));
+        setDoubleBuffered(true);
+        setFocusable(true);
+        loadAssets();
+    }
+
+    private void loadAssets() {
+        arenaImg = AssetLoader.loadImage("arena.png");
+        penguinSheet = AssetLoader.loadImage("penguin.png");
+        yetiSheet = AssetLoader.loadImage("yeti.png");
+        obstacleImg = AssetLoader.loadImage("obstacle.png");
+    }
+
+    public void setPresenter(GamePresenter p) { this.presenter = p; }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (presenter == null) return;
+
+        // Draw Arena
+        if (arenaImg != null) g.drawImage(arenaImg, 0, 0, 800, 600, null);
+
+        // Draw Obstacles
+        for (Obstacle o : presenter.getObstacles()) 
+            g.drawImage(obstacleImg, o.getX(), o.getY(), o.getWidth(), o.getHeight(), null);
+
+        // Draw Projectiles
+        for (Projectile p : presenter.getProjectiles()) {
+            g.setColor(p.getOwner().equals(Projectile.YETI_TYPE) ? Color.CYAN : Color.YELLOW);
+            g.fillOval(p.getX(), p.getY(), 12, 12);
+        }
+
+        // Draw Yeti
+        for (Yeti y : presenter.getYetis()) {
+            if (yetiSheet != null) {
+                BufferedImage subYeti = yetiSheet.getSubimage(0, 0, 200, 200); 
+                g.drawImage(subYeti, y.getX(), y.getY(), 80, 80, null);
+            }
+        }
+
+        drawPenguin(g);
+        hud.draw(g, presenter.getPlayer());
+
+        // Pause Overlay
+        if (presenter.getInput().isPaused()) {
+            g.setColor(new Color(0,0,0,150)); 
+            g.fillRect(0,0,800,600);
+            g.setColor(Color.WHITE); 
+            g.setFont(new Font("Arial", Font.BOLD, 50));
+            g.drawString("PAUSED", 300, 300);
+        }
+    }
+
+    private void drawPenguin(Graphics g) {
+        if (penguinSheet == null) return;
+
+        int row = 0; // 0:Down, 1:Left, 2:Right, 3:Up
+        InputHandler in = presenter.getInput();
+        if (in.isLeft()) row = 1; else if (in.isRight()) row = 2;
+        else if (in.isUp()) row = 3; else if (in.isDown()) row = 0;
+
+        spriteCounter++;
+        if (spriteCounter > 10) { spriteNum = (spriteNum + 1) % 3; spriteCounter = 0; }
+
+        int fw = penguinSheet.getWidth() / 3;
+        int fh = penguinSheet.getHeight() / 4;
+        BufferedImage sub = penguinSheet.getSubimage(spriteNum * fw, row * fh, fw, fh);
+        g.drawImage(sub, presenter.getPlayer().getX(), presenter.getPlayer().getY(), 50, 50, null);
+    }
+}
