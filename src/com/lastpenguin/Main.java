@@ -66,27 +66,22 @@ public class Main {
         Player player = new Player(username);
         
         // Callback untuk kembali ke menu saat Game Over
-        Runnable onGameOver = () -> {
-            // SIMPAN SKOR TERAKHIR KE DATABASE
-            // Gunakan nilai dari objek player dan settings saat ini
+        Runnable finishGame = () -> {
+            // Kirim 7 parameter sesuai urutan di SQLiteManager
             SQLiteManager.saveScore(
-                player.getUsername(), 
-                player.getScore(), 
-                player.getYetiKilled(), 
-                currentSettings.getDifficulty(), 
+                player.getUsername(),
+                player.getScore(),
+                player.getYetiKilled(),
+                player.getMissedShots(),    // Tambahan data missed
+                player.getRemainingBullets(), // Tambahan data peluru
+                currentSettings.getDifficulty(),
                 currentSettings.getMode()
             );
-            showMenu(); // Kembali ke Leaderboard
+            showMenu(); 
         };
 
-        // Callback untuk Menu Pause
-        GamePanel gamePanel = new GamePanel(
-            e -> {}, // Resume ditangani otomatis oleh InputHandler (menekan P lagi)
-            e -> showMenu() // Tombol Quit kembali ke menu
-        );
-
-        // Kirim callback onGameOver ke presenter
-        GamePresenter presenter = new GamePresenter(player, gamePanel, currentSettings, onGameOver);
+        GamePanel gamePanel = new GamePanel(e -> {}, e -> finishGame.run());
+        GamePresenter presenter = new GamePresenter(player, gamePanel, currentSettings, finishGame);
         
         gamePanel.setPresenter(presenter);
         window.setView(gamePanel);
