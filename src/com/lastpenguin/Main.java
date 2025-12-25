@@ -47,14 +47,15 @@ public class Main {
         window.setView(menuView);
     }
 
-   public static void showSettings() {
-        settingsView = new SettingsPanel(e -> {
-            // Update objek settings
+   // Di dalam Main.java
+    public static void showSettings() {
+        // Kirim currentSettings ke konstruktor SettingsPanel
+        settingsView = new SettingsPanel(currentSettings, e -> {
             currentSettings.setDifficulty(settingsView.getSelectedDifficulty());
             currentSettings.setMode(settingsView.getSelectedMode());
             currentSettings.setMusicVolume(settingsView.getVolume());
             
-            // FIX: Simpan ke database agar tidak kembali ke EASY terus
+            // Simpan ke database
             SQLiteManager.updateSettings(currentSettings);
             
             showMenu(); 

@@ -12,7 +12,7 @@ import java.awt.event.ActionListener;
 
 /**
  * UI for modifying game preferences including difficulty and online/offline mode.
- * * @author Muhammad 'Azmi Salam
+ * Updated to reflect current settings from the database upon initialization.
  */
 public class SettingsPanel extends JPanel {
 
@@ -20,29 +20,46 @@ public class SettingsPanel extends JPanel {
     private JComboBox<String> modeBox;
     private JSlider volumeSlider;
 
-    public SettingsPanel(ActionListener backAction) {
+    /**
+     * Constructor updated to accept current settings for UI synchronization.
+     * @param current The current GameSettings loaded from database.
+     * @param backAction The action to perform when Save & Back is clicked.
+     */
+    public SettingsPanel(GameSettings current, ActionListener backAction) {
         setLayout(new GridLayout(5, 2, 10, 10));
         setBorder(BorderFactory.createEmptyBorder(50, 100, 50, 100));
+        setBackground(new Color(220, 240, 255));
 
-        // Components
+        // Options arrays
         String[] difficulties = {GameSettings.EASY, GameSettings.MEDIUM, GameSettings.HARD};
         String[] modes = {GameSettings.OFFLINE, GameSettings.ONLINE};
 
+        // Initialize components
         diffBox = new JComboBox<>(difficulties);
         modeBox = new JComboBox<>(modes);
         volumeSlider = new JSlider(0, 100, 50);
+        
+        // FIX: Set initial values based on current settings from database
+        diffBox.setSelectedItem(current.getDifficulty());
+        modeBox.setSelectedItem(current.getMode());
+        volumeSlider.setValue(current.getMusicVolume());
 
         JButton btnSave = new JButton("SAVE & BACK");
         btnSave.addActionListener(backAction);
 
-        // Add to panel
-        add(new JLabel("Game Difficulty:"));
+        // Styling for labels
+        JLabel lblDiff = new JLabel("Game Difficulty:");
+        JLabel lblMode = new JLabel("Game Mode:");
+        JLabel lblVol = new JLabel("Music Volume:");
+        
+        // Add components to panel
+        add(lblDiff);
         add(diffBox);
-        add(new JLabel("Game Mode:"));
+        add(lblMode);
         add(modeBox);
-        add(new JLabel("Music Volume:"));
+        add(lblVol);
         add(volumeSlider);
-        add(new JLabel("")); 
+        add(new JLabel("")); // Spacer
         add(btnSave);
     }
 

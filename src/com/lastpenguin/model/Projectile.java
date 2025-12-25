@@ -2,22 +2,24 @@ package com.lastpenguin.model;
 
 import java.awt.Rectangle;
 
-/**
- * Projectile that moves in a specific direction (vx, vy).
- */
 public class Projectile {
     public static final String PLAYER_TYPE = "PLAYER";
     public static final String YETI_TYPE = "YETI";
 
-    private int x, y, vx, vy;
+    private double x, y, vx, vy; // Ubah ke double untuk presisi sudut
     private String owner;
     private boolean active = true;
+    private boolean hit = false;
 
-    public Projectile(int x, int y, int vx, int vy, String owner) {
+    public Projectile(int x, int y, double vx, double vy, String owner, int speed) {
         this.x = x;
         this.y = y;
-        this.vx = vx * 8; 
-        this.vy = vy * 8;
+        // Normalisasi vektor dan kalikan dengan speed
+        double magnitude = Math.sqrt(vx * vx + vy * vy);
+        if (magnitude != 0) {
+            this.vx = (vx / magnitude) * speed;
+            this.vy = (vy / magnitude) * speed;
+        }
         this.owner = owner;
     }
 
@@ -28,12 +30,14 @@ public class Projectile {
     }
 
     public Rectangle getBounds() {
-        return new Rectangle(x, y, 12, 12);
+        return new Rectangle((int)x, (int)y, 12, 12);
     }
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public boolean isHit() { return hit; }
+    public void setHit(boolean hit) { this.hit = hit; }
     public String getOwner() { return owner; }
-    public int getX() { return x; }
-    public int getY() { return y; }
+    public int getX() { return (int)x; }
+    public int getY() { return (int)y; }
 }

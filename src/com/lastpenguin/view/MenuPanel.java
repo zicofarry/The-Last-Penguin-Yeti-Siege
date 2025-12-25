@@ -17,9 +17,10 @@ import java.awt.event.ActionListener;
 public class MenuPanel extends JPanel {
     private JTextField usernameField;
     private JTable leaderboardTable;
+    private JScrollPane scrollPane;
 
     public MenuPanel(ActionListener playAction, ActionListener settingsAction) {
-       setLayout(new BorderLayout(10, 10)); 
+        setLayout(new BorderLayout(10, 10)); 
         setBackground(new Color(200, 230, 255));
         setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
 
@@ -28,9 +29,25 @@ public class MenuPanel extends JPanel {
         add(title, BorderLayout.NORTH);
         
         JPanel centerPanel = new JPanel(new BorderLayout(5, 5));
-        centerPanel.setOpaque(false);
+        
+        // --- TAB FILTER DIFFICULTY ---
+        JPanel tabPanel = new JPanel(new GridLayout(1, 3));
+        JButton btnEasy = new JButton("EASY");
+        JButton btnMed = new JButton("MEDIUM");
+        JButton btnHard = new JButton("HARD");
 
-       leaderboardTable = new JTable(SQLiteManager.getLeaderboardData());
+        btnEasy.addActionListener(e -> refreshLeaderboard("EASY"));
+        btnMed.addActionListener(e -> refreshLeaderboard("MEDIUM"));
+        btnHard.addActionListener(e -> refreshLeaderboard("HARD"));
+
+        tabPanel.add(btnEasy); tabPanel.add(btnMed); tabPanel.add(btnHard);
+        centerPanel.add(tabPanel, BorderLayout.NORTH);
+
+        // Leaderboard Table
+        leaderboardTable = new JTable(SQLiteManager.getLeaderboardData("EASY"));
+        scrollPane = new JScrollPane(leaderboardTable);
+        centerPanel.add(scrollPane, BorderLayout.CENTER);
+
         // Agar bisa klik nama di tabel lalu masuk ke textfield
         leaderboardTable.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -68,5 +85,8 @@ public class MenuPanel extends JPanel {
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
+    private void refreshLeaderboard(String diff) {
+        leaderboardTable.setModel(SQLiteManager.getLeaderboardData(diff));
+    }
     public String getUsername() { return usernameField.getText().trim(); }
 }

@@ -29,28 +29,30 @@ public class SQLiteManager {
         }
     }
 
-    public static DefaultTableModel getLeaderboardData() {
-        String[] columnNames = {"Username", "High Score", "Difficulty", "Kills"};
+    public static DefaultTableModel getLeaderboardData(String difficulty) {
+        String[] columnNames = {"Username", "High Score", "Kills", "Missed"};
         DefaultTableModel model = new DefaultTableModel(columnNames, 0);
         
-        // Query menggunakan JOIN untuk mengambil skor tertinggi
-        String sql = "SELECT p.username, IFNULL(MAX(s.score), 0) as top_score, IFNULL(s.difficulty, '-') as diff, IFNULL(s.yeti_killed, 0) as kills " +
-                     "FROM players p " +
-                     "LEFT JOIN scores s ON p.id = s.player_id " +
-                     "GROUP BY p.username ORDER BY top_score DESC";
+        // Query: Ambil MAX score per username untuk difficulty tertentu
+        String sql = "SELECT p.username, MAX(s.score) as top_score, s.yeti_killed, s.missed_shots " +
+                    "FROM players p " +
+                    "JOIN scores s ON p.id = s.player_id " +
+                    "WHERE s.difficulty = ? " +
+                    "GROUP BY p.username " +
+                    "ORDER BY top_score DESC";
 
-        try (Connection conn = connect(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+        try (Connection conn = connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, difficulty);
+            ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 model.addRow(new Object[]{
                     rs.getString("username"),
                     rs.getInt("top_score"),
-                    rs.getString("diff"),
-                    rs.getInt("kills")
+                    rs.getInt("yeti_killed"),
+                    rs.getInt("missed_shots") // Tambahkan kolom missed
                 });
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException e) { e.printStackTrace(); }
         return model;
     }
 

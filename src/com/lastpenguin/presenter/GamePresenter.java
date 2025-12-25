@@ -94,32 +94,34 @@ public class GamePresenter {
         view.repaint();
     }
 
+    // Bagian handleMovement yang sudah diperbaiki
     private void handleMovement() {
         int dx = 0, dy = 0;
         if (input.isUp()) dy--; if (input.isDown()) dy++;
         if (input.isLeft()) dx--; if (input.isRight()) dx++;
         
-        if (dx == 0 && dy == 0) return;
-
-        // Player vs Obstacle Collision
-        Rectangle nextBounds = new Rectangle(player.getX() + dx * 5, player.getY() + dy * 5, 40, 40);
-        boolean blocked = false;
-        for (Obstacle o : obstacles) {
-            if (nextBounds.intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
-                blocked = true; break;
+        // 1. Player Movement (Hanya jika ada input)
+        if (dx != 0 || dy != 0) {
+            Rectangle nextBounds = new Rectangle(player.getX() + dx * 5, player.getY() + dy * 5, 40, 40);
+            boolean blocked = false;
+            for (Obstacle o : obstacles) {
+                if (nextBounds.intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
+                    blocked = true; break;
+                }
             }
+            if (!blocked) player.move(dx, dy);
         }
-        if (!blocked) player.move(dx, dy);
 
-        // Yeti vs Obstacle Collision
+        // 2. Yeti Movement (Yeti TERUS BERGERAK mencari player meskipun player diam)
         for (Yeti y : yetis) {
             int oldX = y.getX();
             int oldY = y.getY();
             y.trackPlayer(player.getX(), player.getY());
             
+            // Cek tabrakan Yeti dengan Obstacle
             for (Obstacle o : obstacles) {
                 if (y.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
-                    y.moveBack(y.getX() - oldX, y.getY() - oldY);
+                    y.moveBack(y.getX() - oldX, y.getY() - oldY); // Yeti tidak bisa tembus batu
                     break;
                 }
             }
@@ -127,52 +129,69 @@ public class GamePresenter {
     }
 
     private void handleCombat() {
+        // Tembakan Player (Kecepatan tetap 8)
         if (input.isShooting() && player.getRemainingBullets() > 0 && shootCooldown == 0) {
             projectiles.add(new Projectile(player.getX() + 15, player.getY() + 15, 
-                                          player.getLastDx(), player.getLastDy(), Projectile.PLAYER_TYPE));
+                        player.getLastDx(), player.getLastDy(), Projectile.PLAYER_TYPE, 8));
             player.useBullet();
             shootCooldown = 20;
         }
         if (shootCooldown > 0) shootCooldown--;
 
+        // Tembakan Yeti (Presisi & Difficulty Speed)
+        int shootChance = settings.getDifficulty().equals(GameSettings.EASY) ? 400 : 200;
+        int bulletSpeed = 8; // Default Medium (Sama dengan player)
+        
+        if (settings.getDifficulty().equals(GameSettings.EASY)) bulletSpeed = 5;
+        else if (settings.getDifficulty().equals(GameSettings.HARD)) bulletSpeed = 12;
+
+        for (Yeti y : yetis) {
+            if (rand.nextInt(shootChance) < 2) {
+                // Hitung arah presisi ke Player (Targeting pusat player)
+                double targetX = player.getX() + 20;
+                double targetY = player.getY() + 20;
+                double diffX = targetX - (y.getX() + 30);
+                double diffY = targetY - (y.getY() + 30);
+                
+                projectiles.add(new Projectile(y.getX() + 30, y.getY() + 30, diffX, diffY, Projectile.YETI_TYPE, bulletSpeed));
+            }
+        }
+
+        // Update Projectiles & Collision dengan Obstacle
         Iterator<Projectile> it = projectiles.iterator();
         while (it.hasNext()) {
             Projectile p = it.next();
             p.update();
-            if (!p.isActive()) {
-                if (p.getOwner().equals(Projectile.YETI_TYPE)) player.addBullets(1);
-                it.remove(); continue;
-            }
+            
+            // SEMUA Peluru hancur jika menabrak Obstacle
+            boolean hitObstacle = false;
             for (Obstacle o : obstacles) {
                 if (p.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
-                    p.setActive(false); break;
+                    p.setActive(false);
+                    hitObstacle = true;
+                    break;
                 }
             }
-        }
 
-        // Agresi menembak Yeti berdasarkan Difficulty
-        int shootChance = settings.getDifficulty().equals(GameSettings.EASY) ? 300 : 150;
-        for (Yeti y : yetis) {
-            if (rand.nextInt(shootChance) < 2) {
-                int vx = (player.getX() > y.getX()) ? 1 : -1;
-                int vy = (player.getY() > y.getY()) ? -1 : 1;
-                projectiles.add(new Projectile(y.getX() + 30, y.getY() + 30, vx, vy, Projectile.YETI_TYPE));
+            if (!p.isActive()) {
+                if (p.getOwner().equals(Projectile.PLAYER_TYPE) && !p.isHit()) player.registerMiss();
+                if (p.getOwner().equals(Projectile.YETI_TYPE)) player.addBullets(1);
+                it.remove();
             }
         }
     }
 
     private void checkCollisions() {
         Rectangle pBounds = player.getBounds();
-        for (Yeti y : yetis) {
-            if (pBounds.intersects(y.getBounds())) { player.die(); return; }
-        }
         for (Projectile p : projectiles) {
-            if (p.getOwner().equals(Projectile.YETI_TYPE)) {
+            if (!p.getOwner().equals(Projectile.PLAYER_TYPE)) {
                 if (p.getBounds().intersects(pBounds)) player.die();
             } else {
                 for (Yeti y : yetis) {
                     if (p.getBounds().intersects(y.getBounds())) {
-                        y.takeDamage(50); p.setActive(false);
+                        y.takeDamage(50);
+                        p.setActive(false);
+                        p.setHit(true); // TANDAI SEBAGAI HIT
                         if (!y.isAlive()) player.registerKill(100);
                     }
                 }

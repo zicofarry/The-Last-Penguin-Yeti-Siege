@@ -22,7 +22,8 @@ import java.util.Map;
 public class AssetLoader {
 
     // Cache to store loaded images
-    private static final Map<String, BufferedImage> imageCache = new HashMap<>();
+    private static final String IMAGE_PATH = "/assets/images/";
+    private static final String SOUND_PATH = "/assets/sounds/";
 
     /**
      * Loads an image from the resources folder.
@@ -30,31 +31,24 @@ public class AssetLoader {
      * @return The loaded BufferedImage or null if failed.
      */
     public static BufferedImage loadImage(String fileName) {
-        String path = "/assets/" + fileName;
-        
-        // Return from cache if already loaded
-        if (imageCache.containsKey(path)) {
-            return imageCache.get(path);
-        }
-
-        try (InputStream is = AssetLoader.class.getResourceAsStream(path)) {
+        try {
+            // Mengambil resource menggunakan ClassLoader agar kompatibel saat dibungkus ke .jar
+            InputStream is = AssetLoader.class.getResourceAsStream(IMAGE_PATH + fileName);
             if (is == null) {
-                System.err.println("Resource not found: " + path);
+                System.err.println("Gagal menemukan gambar: " + IMAGE_PATH + fileName);
                 return null;
             }
-            BufferedImage image = ImageIO.read(is);
-            imageCache.put(path, image);
-            return image;
+            return ImageIO.read(is);
         } catch (IOException e) {
-            System.err.println("Error loading image [" + path + "]: " + e.getMessage());
+            System.err.println("Eror saat membaca gambar " + fileName + ": " + e.getMessage());
             return null;
         }
     }
 
     /**
-     * Clears the image cache to free up memory if needed.
+     * (Placeholder) Untuk memuat input stream suara dari res/assets/sounds/
      */
-    public static void clearCache() {
-        imageCache.clear();
+    public static InputStream getSoundStream(String fileName) {
+        return AssetLoader.class.getResourceAsStream(SOUND_PATH + fileName);
     }
 }
