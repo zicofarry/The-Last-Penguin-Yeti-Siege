@@ -20,13 +20,15 @@ public class GamePresenter {
     private Random rand = new Random();
     private int spawnTimer = 0;
     private int shootCooldown = 0;
+    private Runnable onGameOverCallback;
 
-    public GamePresenter(Player player, GamePanel view, GameSettings settings) {
+    public GamePresenter(Player player, GamePanel view, GameSettings settings, Runnable onGameOver) {
         this.player = player;
         this.view = view;
         this.settings = settings;
         this.input = new InputHandler();
         this.view.addKeyListener(input);
+        this.onGameOverCallback = onGameOver; // Simpan callback dari Main
         spawnObstacles();
     }
 
@@ -49,17 +51,33 @@ public class GamePresenter {
     }
 
     public void update() {
-        if (!player.isAlive() || input.isPaused()) return;
+        if (!player.isAlive()) {
+            // Jika sudah mati, tunggu sebentar lalu panggil callback untuk kembali ke menu
+            // Kita beri delay sedikit agar pemain bisa melihat tulisan "GAME OVER"
+            new javax.swing.Timer(2000, e -> {
+                ((javax.swing.Timer)e.getSource()).stop();
+                if (onGameOverCallback != null) onGameOverCallback.run();
+            }).start();
+            return; 
+        }
+        
+        if (input.isPaused()) return;
 
         handleMovement();
         handleCombat();
         checkCollisions();
         
-        // Difficulty-based Spawn Rate
-        int spawnRate = settings.getDifficulty().equals(GameSettings.EASY) ? 240 : 120;
+        // Logika Difficulty (Medium/Hard)
+        int spawnRate = 240; 
+        int diffVal = 1;
+        if (settings.getDifficulty().equals(GameSettings.MEDIUM)) {
+            spawnRate = 120; diffVal = 2;
+        } else if (settings.getDifficulty().equals(GameSettings.HARD)) {
+            spawnRate = 60; diffVal = 3;
+        }
+
         spawnTimer++;
         if (spawnTimer > spawnRate) {
-            int diffVal = settings.getDifficulty().equals(GameSettings.EASY) ? 1 : 2;
             yetis.add(new Yeti(rand.nextInt(700), 580, diffVal)); 
             spawnTimer = 0;
         }

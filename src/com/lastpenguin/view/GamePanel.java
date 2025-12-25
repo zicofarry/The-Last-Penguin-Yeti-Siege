@@ -3,8 +3,14 @@ package com.lastpenguin.view;
 import com.lastpenguin.model.*;
 import com.lastpenguin.presenter.GamePresenter;
 import com.lastpenguin.presenter.InputHandler;
+
+import javax.swing.JButton;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 
 public class GamePanel extends JPanel {
@@ -12,13 +18,34 @@ public class GamePanel extends JPanel {
     private HUD hud = new HUD();
     private BufferedImage arenaImg, penguinSheet, yetiSheet, obstacleImg;
     private int spriteNum = 0, spriteCounter = 0;
+    private JPanel pauseMenu;
 
-    public GamePanel() {
+    public GamePanel(ActionListener resumeAction, ActionListener quitAction) {
         setPreferredSize(new Dimension(800, 600));
         setDoubleBuffered(true);
         setFocusable(true);
+        setLayout(null); // Gunakan null agar bisa menaruh menu pause di tengah
         loadAssets();
+
+        // Inisialisasi Menu Pause
+        pauseMenu = new JPanel();
+        pauseMenu.setBounds(300, 200, 200, 200);
+        pauseMenu.setBackground(new Color(0, 0, 0, 180));
+        pauseMenu.setLayout(new GridLayout(3, 1, 10, 10));
+        pauseMenu.setVisible(false); // Sembunyi di awal
+
+        JButton btnResume = new JButton("RESUME");
+        JButton btnQuit = new JButton("QUIT TO MENU");
+
+        btnResume.addActionListener(resumeAction);
+        btnQuit.addActionListener(quitAction);
+
+        pauseMenu.add(new JLabel("PAUSED", SwingConstants.CENTER));
+        pauseMenu.add(btnResume);
+        pauseMenu.add(btnQuit);
+        add(pauseMenu);
     }
+
 
     private void loadAssets() {
         arenaImg = AssetLoader.loadImage("arena.png");
@@ -67,6 +94,11 @@ public class GamePanel extends JPanel {
             g.setColor(new Color(0,0,0,150)); g.fillRect(0,0,800,600);
             g.setColor(Color.WHITE); g.setFont(new Font("Arial", Font.BOLD, 50));
             g.drawString("PAUSED", 300, 300);
+        }
+        if (presenter.getInput().isPaused()) {
+            pauseMenu.setVisible(true);
+        } else {
+            pauseMenu.setVisible(false);
         }
     }
 

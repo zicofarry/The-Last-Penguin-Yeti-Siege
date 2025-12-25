@@ -4,7 +4,7 @@
  * GitHub: https://github.com/zicofarry
  */
 package com.lastpenguin.view;
-
+import com.lastpenguin.model.SQLiteManager;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
@@ -15,31 +15,58 @@ import java.awt.event.ActionListener;
  * * @author Muhammad 'Azmi Salam
  */
 public class MenuPanel extends JPanel {
+    private JTextField usernameField;
+    private JTable leaderboardTable;
 
     public MenuPanel(ActionListener playAction, ActionListener settingsAction) {
-        setLayout(new GridBagLayout());
+       setLayout(new BorderLayout(10, 10)); 
         setBackground(new Color(200, 230, 255));
+        setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
 
-        JLabel title = new JLabel("THE LAST PENGUIN: YETI SIEGE");
-        title.setFont(new Font("Arial", Font.BOLD, 36));
+        JLabel title = new JLabel("THE LAST PENGUIN: YETI SIEGE", SwingConstants.CENTER);
+        title.setFont(new Font("Arial", Font.BOLD, 28));
+        add(title, BorderLayout.NORTH);
+        
+        JPanel centerPanel = new JPanel(new BorderLayout(5, 5));
+        centerPanel.setOpaque(false);
+
+       leaderboardTable = new JTable(SQLiteManager.getLeaderboardData());
+        // Agar bisa klik nama di tabel lalu masuk ke textfield
+        leaderboardTable.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int row = leaderboardTable.getSelectedRow();
+                if (row != -1) usernameField.setText(leaderboardTable.getValueAt(row, 0).toString());
+            }
+        });
+        
+        centerPanel.add(new JScrollPane(leaderboardTable), BorderLayout.CENTER);
+
+        JPanel inputPanel = new JPanel();
+        inputPanel.setOpaque(false);
+        inputPanel.add(new JLabel("USERNAME:"));
+        usernameField = new JTextField(15);
+        inputPanel.add(usernameField);
+        centerPanel.add(inputPanel, BorderLayout.SOUTH);
+        
+        add(centerPanel, BorderLayout.CENTER);
+
+        // BAWAH: BUTTONS
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setOpaque(false);
         
         JButton btnPlay = new JButton("START GAME");
         JButton btnSettings = new JButton("SETTINGS");
         JButton btnExit = new JButton("EXIT");
 
-        // Action Listeners
         btnPlay.addActionListener(playAction);
         btnSettings.addActionListener(settingsAction);
         btnExit.addActionListener(e -> System.exit(0));
 
-        // Layouting
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.insets = new Insets(10, 0, 10, 0);
-
-        gbc.gridy = 0; add(title, gbc);
-        gbc.gridy = 1; add(btnPlay, gbc);
-        gbc.gridy = 2; add(btnSettings, gbc);
-        gbc.gridy = 3; add(btnExit, gbc);
+        buttonPanel.add(btnPlay);
+        buttonPanel.add(btnSettings);
+        buttonPanel.add(btnExit);
+        add(buttonPanel, BorderLayout.SOUTH);
     }
+
+    public String getUsername() { return usernameField.getText().trim(); }
 }

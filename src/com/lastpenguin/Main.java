@@ -5,34 +5,25 @@
  */
 package com.lastpenguin;
 
-import com.lastpenguin.model.GameSettings;
-import com.lastpenguin.model.Player;
-import com.lastpenguin.model.SQLiteManager;
+import com.lastpenguin.model.*;
+import com.lastpenguin.view.*;
 import com.lastpenguin.presenter.GamePresenter;
-import com.lastpenguin.view.GamePanel;
-import com.lastpenguin.view.GameWindow;
-import com.lastpenguin.view.MenuPanel;
-import com.lastpenguin.view.SettingsPanel;
-import javax.swing.SwingUtilities;
+import javax.swing.*; // MENGGUNAKAN * AGAR SEMUA KOMPONEN SWING (SwingUtilities, JOptionPane, dll) TER-IMPORT
 
 /**
  * Orchestrator class for The Last Penguin: Yeti Siege.
  * Manages the transitions between menus and the gameplay state.
- * * @author Muhammad 'Azmi Salam
- * @version 1.0
- * @since December 2025
  */
 public class Main {
-
     private static GameWindow window;
     private static GameSettings currentSettings;
-    
-    // Fix: Moved to static field to avoid lambda initialization error
-    private static SettingsPanel settingsView; 
+    private static MenuPanel menuView; 
+    private static SettingsPanel settingsView;
+
 
     public static void main(String[] args) {
         SQLiteManager.initDatabase();
-        currentSettings = new GameSettings();
+        currentSettings = SQLiteManager.loadSettings();
 
         SwingUtilities.invokeLater(() -> {
             window = new GameWindow();
@@ -42,34 +33,60 @@ public class Main {
     }
 
     public static void showMenu() {
-        MenuPanel menu = new MenuPanel(
-            e -> startGame(),
+        // Refresh data leaderboard setiap kali kembali ke menu utama
+        menuView = new MenuPanel(
+            e -> {
+                if (menuView.getUsername().isEmpty()) {
+                    JOptionPane.showMessageDialog(window, "Isi username dulu!");
+                } else {
+                    startGame(menuView.getUsername()); 
+                }
+            },
             e -> showSettings()
         );
-        window.setView(menu);
+        window.setView(menuView);
     }
 
-    /**
-     * Navigates the user to the Settings Screen.
-     */
-    public static void showSettings() {
-        // Now using the static field 'settingsView'
+   public static void showSettings() {
         settingsView = new SettingsPanel(e -> {
-            // Update settings model from view data
+            // Update objek settings
             currentSettings.setDifficulty(settingsView.getSelectedDifficulty());
             currentSettings.setMode(settingsView.getSelectedMode());
             currentSettings.setMusicVolume(settingsView.getVolume());
             
-            // Return to menu after saving
+            // FIX: Simpan ke database agar tidak kembali ke EASY terus
+            SQLiteManager.updateSettings(currentSettings);
+            
             showMenu(); 
         });
         window.setView(settingsView);
     }
 
-    public static void startGame() {
-        Player player = new Player("Creativity");
-        GamePanel gamePanel = new GamePanel();
-        GamePresenter presenter = new GamePresenter(player, gamePanel, currentSettings);
+    public static void startGame(String username) {
+        Player player = new Player(username);
+        
+        // Callback untuk kembali ke menu saat Game Over
+        Runnable onGameOver = () -> {
+            // SIMPAN SKOR TERAKHIR KE DATABASE
+            // Gunakan nilai dari objek player dan settings saat ini
+            SQLiteManager.saveScore(
+                player.getUsername(), 
+                player.getScore(), 
+                player.getYetiKilled(), 
+                currentSettings.getDifficulty(), 
+                currentSettings.getMode()
+            );
+            showMenu(); // Kembali ke Leaderboard
+        };
+
+        // Callback untuk Menu Pause
+        GamePanel gamePanel = new GamePanel(
+            e -> {}, // Resume ditangani otomatis oleh InputHandler (menekan P lagi)
+            e -> showMenu() // Tombol Quit kembali ke menu
+        );
+
+        // Kirim callback onGameOver ke presenter
+        GamePresenter presenter = new GamePresenter(player, gamePanel, currentSettings, onGameOver);
         
         gamePanel.setPresenter(presenter);
         window.setView(gamePanel);
