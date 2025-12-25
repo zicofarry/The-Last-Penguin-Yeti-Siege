@@ -20,7 +20,10 @@ public class GamePresenter {
     private Random rand = new Random();
     private int spawnTimer = 0;
     private int shootCooldown = 0;
+    
+    private Timer gameLoop; // Referensi timer untuk menghentikan loop saat mati
     private Runnable onGameOverCallback;
+    private boolean isGameOverCalled = false; // Flag untuk mencegah duplikasi simpan skor
 
     public GamePresenter(Player player, GamePanel view, GameSettings settings, Runnable onGameOver) {
         this.player = player;
@@ -28,13 +31,10 @@ public class GamePresenter {
         this.settings = settings;
         this.input = new InputHandler();
         this.view.addKeyListener(input);
-        this.onGameOverCallback = onGameOver; // Simpan callback dari Main
+        this.onGameOverCallback = onGameOver;
         spawnObstacles();
     }
 
-    /**
-     * Spawns obstacles randomly while ensuring they don't overlap with the player's start.
-     */
     private void spawnObstacles() {
         Rectangle playerSafeZone = new Rectangle(player.getX() - 50, player.getY() - 50, 150, 150);
         for(int i = 0; i < 5; i++) {
@@ -44,20 +44,27 @@ public class GamePresenter {
                 ox = rand.nextInt(600) + 100;
                 oy = rand.nextInt(350) + 50;
                 obsRect = new Rectangle(ox, oy, 80, 80);
-            } while (obsRect.intersects(playerSafeZone)); // Retry if spawning on player
+            } while (obsRect.intersects(playerSafeZone));
             
             obstacles.add(new Obstacle(ox, oy, 80, 80));
         }
     }
 
     public void update() {
+        // Logika Game Over
         if (!player.isAlive()) {
-            // Jika sudah mati, tunggu sebentar lalu panggil callback untuk kembali ke menu
-            // Kita beri delay sedikit agar pemain bisa melihat tulisan "GAME OVER"
-            new javax.swing.Timer(2000, e -> {
-                ((javax.swing.Timer)e.getSource()).stop();
-                if (onGameOverCallback != null) onGameOverCallback.run();
-            }).start();
+            if (!isGameOverCalled) {
+                isGameOverCalled = true; // Kunci agar proses ini hanya jalan 1x
+                if (gameLoop != null) gameLoop.stop(); // Hentikan loop game segera!
+
+                // Beri jeda 2 detik agar pemain melihat tulisan "GAME OVER" sebelum pindah
+                Timer delayTimer = new Timer(2000, e -> {
+                    ((Timer)e.getSource()).stop();
+                    if (onGameOverCallback != null) onGameOverCallback.run();
+                });
+                delayTimer.setRepeats(false);
+                delayTimer.start();
+            }
             return; 
         }
         
@@ -67,13 +74,16 @@ public class GamePresenter {
         handleCombat();
         checkCollisions();
         
-        // Logika Difficulty (Medium/Hard)
-        int spawnRate = 240; 
-        int diffVal = 1;
+        // Logika Difficulty Terintegrasi
+        int spawnRate = 240; // Default Easy
+        int diffVal = 1;     // Kecepatan Yeti (Easy)
+
         if (settings.getDifficulty().equals(GameSettings.MEDIUM)) {
-            spawnRate = 120; diffVal = 2;
+            spawnRate = 120; // Medium: Spawn lebih cepat
+            diffVal = 2;     // Medium: Yeti lebih cepat
         } else if (settings.getDifficulty().equals(GameSettings.HARD)) {
-            spawnRate = 60; diffVal = 3;
+            spawnRate = 80;  // Hard: Spawn sangat cepat
+            diffVal = 3;     // Hard: Yeti sangat agresif/cepat
         }
 
         spawnTimer++;
@@ -109,7 +119,6 @@ public class GamePresenter {
             
             for (Obstacle o : obstacles) {
                 if (y.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
-                    // Simple collision response: revert move if blocked
                     y.moveBack(y.getX() - oldX, y.getY() - oldY);
                     break;
                 }
@@ -118,7 +127,6 @@ public class GamePresenter {
     }
 
     private void handleCombat() {
-        // Player shooting based on last move direction (X key)
         if (input.isShooting() && player.getRemainingBullets() > 0 && shootCooldown == 0) {
             projectiles.add(new Projectile(player.getX() + 15, player.getY() + 15, 
                                           player.getLastDx(), player.getLastDy(), Projectile.PLAYER_TYPE));
@@ -135,7 +143,6 @@ public class GamePresenter {
                 if (p.getOwner().equals(Projectile.YETI_TYPE)) player.addBullets(1);
                 it.remove(); continue;
             }
-            // Projectile vs Obstacle
             for (Obstacle o : obstacles) {
                 if (p.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
                     p.setActive(false); break;
@@ -143,7 +150,7 @@ public class GamePresenter {
             }
         }
 
-        // Yeti Shooting Aggression based on Difficulty
+        // Agresi menembak Yeti berdasarkan Difficulty
         int shootChance = settings.getDifficulty().equals(GameSettings.EASY) ? 300 : 150;
         for (Yeti y : yetis) {
             if (rand.nextInt(shootChance) < 2) {
@@ -179,5 +186,9 @@ public class GamePresenter {
     public List<Projectile> getProjectiles() { return projectiles; }
     public Player getPlayer() { return player; }
     public InputHandler getInput() { return input; }
-    public void startGame() { new Timer(16, e -> update()).start(); }
+    
+    public void startGame() { 
+        gameLoop = new Timer(16, e -> update());
+        gameLoop.start(); 
+    }
 }

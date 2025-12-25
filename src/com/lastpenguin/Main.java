@@ -63,26 +63,25 @@ public class Main {
     }
 
     public static void startGame(String username) {
-        Player player = new Player(username);
+        Player player = new Player(username); // Objek player baru untuk sesi ini
+        GamePanel gamePanel = new GamePanel(e -> {}, e -> showMenu());
         
-        // Callback untuk kembali ke menu saat Game Over
-        Runnable finishGame = () -> {
-            // Kirim 7 parameter sesuai urutan di SQLiteManager
+        // Callback yang akan dipanggil oleh Presenter saat game over
+        Runnable onGameOver = () -> {
+            System.out.println("DEBUG: Menyimpan skor untuk " + player.getUsername());
             SQLiteManager.saveScore(
                 player.getUsername(),
                 player.getScore(),
                 player.getYetiKilled(),
-                player.getMissedShots(),    // Tambahan data missed
-                player.getRemainingBullets(), // Tambahan data peluru
+                player.getMissedShots(),
+                player.getRemainingBullets(),
                 currentSettings.getDifficulty(),
                 currentSettings.getMode()
             );
-            showMenu(); 
+            showMenu(); // Kembali ke menu utama (Leaderboard akan refresh)
         };
 
-        GamePanel gamePanel = new GamePanel(e -> {}, e -> finishGame.run());
-        GamePresenter presenter = new GamePresenter(player, gamePanel, currentSettings, finishGame);
-        
+        GamePresenter presenter = new GamePresenter(player, gamePanel, currentSettings, onGameOver);
         gamePanel.setPresenter(presenter);
         window.setView(gamePanel);
         presenter.startGame();

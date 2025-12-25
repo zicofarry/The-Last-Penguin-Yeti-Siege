@@ -56,12 +56,12 @@ public class SQLiteManager {
 
     public static void saveScore(String username, int score, int killed, int missed, int bullets, String diff, String mode) {
         try (Connection conn = connect()) {
-            // 1. Pastikan Player ada
+            // 1. Pastikan player ada
             try (PreparedStatement ps = conn.prepareStatement("INSERT OR IGNORE INTO players (username) VALUES (?)")) {
                 ps.setString(1, username);
                 ps.executeUpdate();
             }
-            
+
             // 2. Ambil ID player
             int playerId = -1;
             try (PreparedStatement ps = conn.prepareStatement("SELECT id FROM players WHERE username = ?")) {
@@ -70,24 +70,24 @@ public class SQLiteManager {
                 if (rs.next()) playerId = rs.getInt("id");
             }
 
-            // 3. Simpan Skor (LENGKAP dengan missed_shots dan remaining_bullets)
+            // 3. Simpan data (Pastikan urutan ? sesuai dengan setInt)
             if (playerId != -1) {
                 String sql = "INSERT INTO scores (player_id, score, missed_shots, remaining_bullets, yeti_killed, difficulty, mode) " +
                             "VALUES (?, ?, ?, ?, ?, ?, ?)";
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setInt(1, playerId);
-                    ps.setInt(2, score);
-                    ps.setInt(3, missed);
-                    ps.setInt(4, bullets);
-                    ps.setInt(5, killed);
+                    ps.setInt(2, score);    // Kolom score
+                    ps.setInt(3, missed);   // Kolom missed_shots
+                    ps.setInt(4, bullets);  // Kolom remaining_bullets
+                    ps.setInt(5, killed);   // Kolom yeti_killed
                     ps.setString(6, diff);
                     ps.setString(7, mode);
                     ps.executeUpdate();
-                    System.out.println("Skor berhasil disimpan!");
+                    System.out.println("Skor Berhasil Disimpan di Database!");
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Database Save Error: " + e.getMessage());
         }
     }
 
