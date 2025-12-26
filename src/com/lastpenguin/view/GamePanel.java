@@ -18,16 +18,16 @@ public class GamePanel extends JPanel {
     private JLabel lblStats;
     private BufferedImage[] yetiSprites;
 
-    public GamePanel(ActionListener quitAction) { // Lepas resumeAction dari constructor jika hanya untuk unpause
+    // UPDATE: Konstruktor sekarang menerima 2 parameter
+    public GamePanel(ActionListener quitAction, ActionListener settingsAction) { 
         setPreferredSize(new Dimension(800, 600));
         setDoubleBuffered(true);
         setFocusable(true);
         setLayout(null); 
         loadAssets();
 
-        // Inisialisasi Menu Pause
         pauseMenu = new JPanel();
-        pauseMenu.setBounds(250, 100, 300, 400);
+        pauseMenu.setBounds(250, 80, 300, 440); // Perbesar tinggi untuk tombol tambahan
         pauseMenu.setBackground(new Color(0, 0, 0, 220));
         pauseMenu.setLayout(new BoxLayout(pauseMenu, BoxLayout.Y_AXIS));
         pauseMenu.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
@@ -52,6 +52,11 @@ public class GamePanel extends JPanel {
             }
         });
 
+        // TOMBOL BARU: Settings di dalam Pause Menu
+        JButton btnSettings = new JButton("SETTINGS");
+        btnSettings.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btnSettings.addActionListener(settingsAction);
+
         JButton btnSurrender = new JButton("SURRENDER & QUIT");
         btnSurrender.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnSurrender.addActionListener(e -> {
@@ -65,6 +70,8 @@ public class GamePanel extends JPanel {
         pauseMenu.add(lblStats);
         pauseMenu.add(Box.createRigidArea(new Dimension(0, 30)));
         pauseMenu.add(btnResume);
+        pauseMenu.add(Box.createRigidArea(new Dimension(0, 10)));
+        pauseMenu.add(btnSettings); // Tambahkan tombol ke UI
         pauseMenu.add(Box.createRigidArea(new Dimension(0, 10)));
         pauseMenu.add(btnSurrender);
         

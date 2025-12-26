@@ -34,10 +34,6 @@ public class InputHandler extends KeyAdapter implements MouseListener, MouseMoti
             if (code == settings.getKeyS2()) s2 = true;
             if (code == settings.getKeyS3()) s3 = true;
         }
-        
-        if (code == KeyEvent.VK_SPACE) {
-            paused = !paused;
-        }
     }
 
     @Override

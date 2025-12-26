@@ -21,7 +21,7 @@ public class Yeti {
         this.x = x;
         this.y = y;
         this.health = 50;
-        this.speed = difficultyValue;
+        this.speed = (difficultyValue < 1) ? 1 : difficultyValue;
     }
 
     public void trackPlayer(int playerX, int playerY) {
@@ -54,6 +54,20 @@ public class Yeti {
             animationCounter = 0;
         }
     }
+    public void updateAnimation(int targetX, int targetY) {
+        if (Math.abs(targetX - x) > Math.abs(targetY - y)) {
+            direction = (targetX > x) ? RIGHT : LEFT;
+        } else {
+            direction = (targetY > y) ? FRONT : BACK;
+        }
+
+        animationCounter++;
+        if (animationCounter > 12) {
+            animationStep++;
+            if (animationStep > 2) animationStep = 0;
+            animationCounter = 0;
+        }
+    }
 
     public void moveBack(int dx, int dy) {
         this.x -= dx;
@@ -73,4 +87,9 @@ public class Yeti {
     public boolean isAlive() { return alive; }
     public int getX() { return x; }
     public int getY() { return y; }
+    public int getSpeed() { return speed; }
+    public void setPosition(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
 }

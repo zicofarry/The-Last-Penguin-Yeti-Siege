@@ -8,7 +8,8 @@ package com.lastpenguin;
 import com.lastpenguin.model.*;
 import com.lastpenguin.view.*;
 import com.lastpenguin.presenter.GamePresenter;
-import javax.swing.*; 
+import javax.swing.*;
+import java.awt.event.ActionListener;
 
 /**
  * Orchestrator class for The Last Penguin: Yeti Siege.
@@ -44,32 +45,35 @@ public class Main {
                     startGame(menuView.getUsername()); 
                 }
             },
-            e -> showSettings()
+            e -> showSettings(false, () -> showMenu()) // Mode menu utama: bisa ubah difficulty
         );
         window.setView(menuView);
     }
 
     /**
-     * Menampilkan panel pengaturan dan menyimpan perubahan (termasuk tombol kustom dan mouse).
+     * Menampilkan panel pengaturan.
+     * @param isIngame Jika true, maka difficulty dan mode tidak bisa diubah.
+     * @param onBackAction Aksi yang dijalankan saat tombol SAVE diklik.
      */
-    public static void showSettings() {
-        // Kirim currentSettings ke SettingsPanel agar UI sinkron
-        settingsView = new SettingsPanel(currentSettings, e -> {
-            // Ambil nilai dari komponen UI SettingsPanel
+    public static void showSettings(boolean isIngame, Runnable onBackAction) {
+        settingsView = new SettingsPanel(currentSettings, isIngame, e -> {
+            // Ambil nilai dari komponen UI SettingsPanel dan simpan ke currentSettings
             currentSettings.setDifficulty(settingsView.getSelectedDifficulty());
             currentSettings.setMode(settingsView.getSelectedMode());
-            currentSettings.setMusicVolume(settingsView.getVolume());
+            currentSettings.setMusicVolume(settingsView.isMusicEnabled() ? 100 : 0);
+            currentSettings.setSfxVolume(settingsView.isSfxEnabled() ? 100 : 0);
             
-            // Simpan pengaturan kontrol baru (Skill keys & Mouse toggle)
+            // Simpan pengaturan kontrol (Skill keys & Mouse toggle)
             currentSettings.setUseMouse(settingsView.isMouseEnabled());
             currentSettings.setKeyS1(settingsView.getS1Key());
             currentSettings.setKeyS2(settingsView.getS2Key());
             currentSettings.setKeyS3(settingsView.getS3Key());
             
-            // Simpan perubahan ke database SQLite
+            // Update ke database SQLite agar tersimpan permanen
             SQLiteManager.updateSettings(currentSettings);
             
-            showMenu(); 
+            // Kembali ke layar sebelumnya (Menu atau Game)
+            onBackAction.run();
         });
         window.setView(settingsView);
     }
@@ -79,9 +83,24 @@ public class Main {
      */
     public static void startGame(String username) {
         Player player = new Player(username); 
-        // Menggunakan action listener tunggal untuk kembali ke menu
-        GamePanel gamePanel = new GamePanel(e -> showMenu());
         
+        // Kita butuh referensi final agar bisa diakses di dalam lambda settingsAction
+        final GamePanel[] gamePanelRef = new GamePanel[1];
+
+        // Aksi saat pemain memilih Quit dari menu pause
+        ActionListener quitAction = e -> showMenu();
+
+        // Aksi saat pemain memilih Settings dari menu pause
+        ActionListener settingsAction = e -> showSettings(true, () -> {
+            // Setelah save di settings, kembalikan tampilan ke panel game yang tadi
+            window.setView(gamePanelRef[0]);
+            gamePanelRef[0].requestFocusInWindow();
+        });
+
+        // Inisialisasi GamePanel dengan dua listener (Quit dan Settings)
+        gamePanelRef[0] = new GamePanel(quitAction, settingsAction);
+        
+        // Callback saat game over (mati atau surrender)
         Runnable onGameOver = () -> {
             System.out.println("DEBUG: Menyimpan skor untuk " + player.getUsername());
             SQLiteManager.saveScore(
@@ -96,13 +115,13 @@ public class Main {
             showMenu();
         };
 
-        GamePresenter presenter = new GamePresenter(player, gamePanel, currentSettings, onGameOver);
-        gamePanel.setPresenter(presenter);
+        // Hubungkan model, view, dan presenter
+        GamePresenter presenter = new GamePresenter(player, gamePanelRef[0], currentSettings, onGameOver);
+        gamePanelRef[0].setPresenter(presenter);
         
-        window.setView(gamePanel);
-        
-        // PENTING: Minta fokus agar keyboard terbaca
-        gamePanel.requestFocusInWindow(); 
+        // Tampilkan game di window
+        window.setView(gamePanelRef[0]);
+        gamePanelRef[0].requestFocusInWindow(); 
         
         presenter.startGame();
     }
