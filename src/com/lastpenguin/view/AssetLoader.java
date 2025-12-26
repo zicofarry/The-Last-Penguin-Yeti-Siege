@@ -44,6 +44,29 @@ public class AssetLoader {
             return null;
         }
     }
+    // Tambahkan di AssetLoader.java
+    public static BufferedImage[] loadYetiSprites() {
+        BufferedImage[] sprites = new BufferedImage[12];
+        String[] directions = {"front", "left", "right", "back"};
+        String[] steps = {"left", "balanced", "right"};
+        
+        int index = 0;
+        for (String dir : directions) {
+            for (String step : steps) {
+                String fileName = "yeti_" + dir + "_" + step + ".png";
+                BufferedImage img = loadImage(fileName);
+                
+                // Fallback: Jika gambar tidak ditemukan, gunakan yeti_front_balanced.png (no. 2)
+                if (img == null) {
+                    img = loadImage("yeti_front_balanced.png");
+                }
+
+                if (img == null) img = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+                sprites[index++] = img;
+            }
+        }
+        return sprites;
+    }
 
     /**
      * (Placeholder) Untuk memuat input stream suara dari res/assets/sounds/

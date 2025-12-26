@@ -19,6 +19,7 @@ public class GamePanel extends JPanel {
     private BufferedImage arenaImg, penguinSheet, yetiSheet, obstacleImg;
     private int spriteNum = 0, spriteCounter = 0;
     private JPanel pauseMenu;
+    private BufferedImage[] yetiSprites = AssetLoader.loadYetiSprites();
 
     public GamePanel(ActionListener resumeAction, ActionListener quitAction) {
         setPreferredSize(new Dimension(800, 600));
@@ -50,8 +51,8 @@ public class GamePanel extends JPanel {
     private void loadAssets() {
         arenaImg = AssetLoader.loadImage("arena.png");
         penguinSheet = AssetLoader.loadImage("penguin.png");
-        yetiSheet = AssetLoader.loadImage("yeti.png");
         obstacleImg = AssetLoader.loadImage("obstacle.png");
+        yetiSprites = AssetLoader.loadYetiSprites(); // Load 12 frame yeti
     }
 
     public void setPresenter(GamePresenter p) { this.presenter = p; }
@@ -72,9 +73,9 @@ public class GamePanel extends JPanel {
         }
 
         for (Yeti y : presenter.getYetis()) {
-            if (yetiSheet != null) {
-                BufferedImage subYeti = yetiSheet.getSubimage(0, 0, 150, 150); 
-                g.drawImage(subYeti, y.getX(), y.getY(), 75, 75, null);
+            int index = y.getSpriteIndex();
+            if (yetiSprites != null && index < yetiSprites.length) {
+                g.drawImage(yetiSprites[index], y.getX(), y.getY(), 75, 75, null);
             }
         }
 
@@ -117,4 +118,11 @@ public class GamePanel extends JPanel {
         BufferedImage sub = penguinSheet.getSubimage(spriteNum * fw, row * fh, fw, fh);
         g.drawImage(sub, presenter.getPlayer().getX(), presenter.getPlayer().getY(), 50, 50, null);
     }
+
+    // private void drawYeti(Graphics2D g2, Yeti yeti) {
+    //     int spriteIndex = yeti.getSpriteIndex();
+    //     BufferedImage image = yetiSprites[spriteIndex];
+        
+    //     g2.drawImage(image, yeti.getX(), yeti.getY(), 64, 64, null);
+    // }
 }
