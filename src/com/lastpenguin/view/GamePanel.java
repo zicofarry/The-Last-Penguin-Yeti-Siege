@@ -114,8 +114,29 @@ public class GamePanel extends JPanel {
         if (arenaImg != null) g.drawImage(arenaImg, 0, 0, 800, 600, null);
 
         for (Obstacle o : presenter.getObstacles()) {
-            if (o.isHole()) g.drawImage(lubangImg, o.getX(), o.getY(), o.getWidth(), o.getHeight(), null);
-            else g.drawImage(obstacleImg, o.getX(), o.getY(), o.getWidth(), o.getHeight(), null);
+            if (o.isHole()) {
+                // Lubang digambar sesuai ukuran aslinya (sekarang sudah besar)
+                g.drawImage(lubangImg, o.getX(), o.getY(), o.getWidth(), o.getHeight(), null);
+                // --- KODE DEBUG UNTUK LUBANG ---
+                g.setColor(new Color(255, 0, 0, 150)); // Warna Merah Transparan
+                g.drawRect(o.getX(), o.getY(), o.getWidth(), o.getHeight()); // Gambar garis luar kotak
+                g.fillRect(o.getX(), o.getY(), o.getWidth(), o.getHeight()); // Isi kotak (opsional untuk melihat area penuh)
+                // -------------------------------
+            } else {
+                // --- LOGIKA PERBAIKAN OBSTACLE ---
+                // Gambar batu sedikit lebih besar (padding 15px) dari hitbox aslinya
+                int visualPadding = 15;
+                g.drawImage(obstacleImg, 
+                    o.getX() - visualPadding, 
+                    o.getY() - visualPadding, 
+                    o.getWidth() + (visualPadding * 2), 
+                    o.getHeight() + (visualPadding * 2), 
+                    null);
+                    
+                // Opsional: Debugging hitbox (hapus tanda komentar di bawah untuk melihat kotak asli)
+                g.setColor(new Color(255, 0, 0, 100));
+                g.drawRect(o.getX(), o.getY(), o.getWidth(), o.getHeight());
+            }
         }
 
         for (Projectile p : presenter.getProjectiles()) {

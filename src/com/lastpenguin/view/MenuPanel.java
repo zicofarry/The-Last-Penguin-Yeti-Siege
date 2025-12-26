@@ -62,6 +62,13 @@ public class MenuPanel extends JPanel {
         inputPanel.setOpaque(false);
         inputPanel.add(new JLabel("USERNAME:"));
         usernameField = new JTextField(15);
+        usernameField.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyTyped(java.awt.event.KeyEvent e) {
+                // Pastikan Anda sudah memiliki akses ke soundManager atau panggil secara statis/instansi baru
+                new Sound().playEffect("sfx_keyboard.wav");
+            }
+        });
         inputPanel.add(usernameField);
         centerPanel.add(inputPanel, BorderLayout.SOUTH);
         
@@ -89,4 +96,5 @@ public class MenuPanel extends JPanel {
         leaderboardTable.setModel(SQLiteManager.getLeaderboardData(diff));
     }
     public String getUsername() { return usernameField.getText().trim(); }
+    
 }

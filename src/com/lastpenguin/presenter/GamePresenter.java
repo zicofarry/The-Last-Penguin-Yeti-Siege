@@ -5,6 +5,7 @@ import com.lastpenguin.view.GamePanel;
 import java.util.*;
 import javax.swing.Timer;
 import java.awt.Rectangle;
+import com.lastpenguin.view.Sound;
 
 public class GamePresenter {
     private Player player;
@@ -21,6 +22,7 @@ public class GamePresenter {
     private Timer gameLoop;
     private Runnable onGameOverCallback;
     private boolean isGameOverCalled = false;
+    private Sound soundManager = new Sound();
 
     public GamePresenter(Player player, GamePanel view, GameSettings settings, Runnable onGameOver) {
         this.player = player;
@@ -36,6 +38,7 @@ public class GamePresenter {
         this.onGameOverCallback = onGameOver;
         spawnInitialObstacles();
         this.input.setSettings(settings);
+        this.soundManager.setSettings(settings);
     }
 
     private void spawnInitialObstacles() {
@@ -56,6 +59,7 @@ public class GamePresenter {
         if (!player.isAlive()) {
             if (!isGameOverCalled) {
                 isGameOverCalled = true;
+                soundManager.playEffect("sfx_game_over.wav");
                 if (gameLoop != null) gameLoop.stop();
                 Timer delayTimer = new Timer(2000, e -> {
                     ((Timer)e.getSource()).stop();
@@ -90,6 +94,7 @@ public class GamePresenter {
         spawnTimer++;
         if (spawnTimer > spawnRate) {
             yetis.add(new Yeti(rand.nextInt(700), 580, settings.getDifficulty().equals(GameSettings.HARD) ? 3 : 1)); 
+            soundManager.playEffect("sfx_yeti_spawn.wav");
             spawnTimer = 0;
         }
         view.repaint();
@@ -102,6 +107,9 @@ public class GamePresenter {
         if (input.isLeft()) dx--; if (input.isRight()) dx++;
         
         if (dx != 0 || dy != 0) {
+            if (System.currentTimeMillis() % 350 < 20) {
+                soundManager.playEffect("sfx_walk.wav");
+            }
             Rectangle currentBounds = player.getBounds();
             Rectangle nextBounds = new Rectangle(player.getX() + dx * 5, player.getY() + dy * 5, 40, 40);
             boolean blocked = false;
@@ -184,27 +192,41 @@ public class GamePresenter {
 
     private void handleSkills() {
         if (input.isS1() && player.getCooldownS1() == 0 && player.getRemainingBullets() >= 5) {
+            soundManager.playEffect("sfx_keyboard.wav");
             player.addBullets(-5);
             player.setS1RemainingShots(3);
             player.setCooldownS1(600); 
         }
 
         if (input.isS2() && player.getCooldownS2() == 0 && player.getRemainingBullets() >= 10) {
+            soundManager.playEffect("sfx_skill_meteor.wav");    
             player.addBullets(-10);
-            int tx = (input.getMouseX() > 0) ? input.getMouseX() - 40 : player.getX();
-            int ty = (input.getMouseY() > 0) ? input.getMouseY() - 40 : player.getY();
             
+            // Tentukan ukuran lubang yang lebih besar
+            int holeSize = 160; 
+            
+            // Tentukan koordinat target (tengah kursor atau tengah penguin)
+            int targetX = (input.getMouseX() > 0) ? input.getMouseX() : player.getX() + 25;
+            int targetY = (input.getMouseY() > 0) ? input.getMouseY() : player.getY() + 25;
+
+            // Hitung posisi sudut kiri atas agar gambar tepat di tengah target
+            int tx = targetX - (holeSize / 2);
+            int ty = targetY - (holeSize / 2);
+            
+            // Logika kill tetap luas (radius 200)
             yetis.removeIf(y -> {
-                double dist = Math.sqrt(Math.pow(y.getX() - tx, 2) + Math.pow(y.getY() - ty, 2));
+                double dist = Math.sqrt(Math.pow(y.getX() - targetX, 2) + Math.pow(y.getY() - targetY, 2));
                 if (dist < 200) { player.registerKill(100); return true; }
                 return false;
             });
             
-            obstacles.add(new Obstacle(tx, ty, 80, 80, true, 300)); 
+            // Tambahkan lubang dengan ukuran baru (160x160)
+            obstacles.add(new Obstacle(tx, ty, holeSize, holeSize, true, 300)); 
             player.setCooldownS2(900); 
         }
 
         if (input.isS3() && player.getCooldownS3() == 0 && player.getRemainingBullets() >= 3) {
+            soundManager.playEffect("sfx_skill_ghost.wav");
             player.addBullets(-3);
             player.setGhostDuration(300); 
             player.setCooldownS3(600); 
@@ -213,29 +235,39 @@ public class GamePresenter {
 
     private void handleCombat() {
         boolean wantToShoot = input.isShooting() || (settings.isUseMouse() && input.isMouseClicked());
-        if (wantToShoot && player.getRemainingBullets() > 0 && shootCooldown == 0) {
-            double targetDx, targetDy;
-            if (settings.isUseMouse() && input.isMouseClicked()) {
-                targetDx = input.getMouseX() - (player.getX() + 25);
-                targetDy = input.getMouseY() - (player.getY() + 25);
-            } else {
-                targetDx = player.getLastDx(); 
-                targetDy = player.getLastDy();
-            }
+        if (wantToShoot){
+            if(player.getRemainingBullets() > 0 && shootCooldown == 0) {
+                if (player.getS1RemainingShots() > 0) {
+                    soundManager.playEffect("sfx_skill_giant.wav");
+                } else {
+                    soundManager.playEffect("sfx_shoot.wav");
+                }
+                double targetDx, targetDy;
+                if (settings.isUseMouse() && input.isMouseClicked()) {
+                    targetDx = input.getMouseX() - (player.getX() + 25);
+                    targetDy = input.getMouseY() - (player.getY() + 25);
+                } else {
+                    targetDx = player.getLastDx(); 
+                    targetDy = player.getLastDy();
+                }
 
-            Projectile p = new Projectile(player.getX()+15, player.getY()+15, targetDx, targetDy, Projectile.PLAYER_TYPE, 8);
-            if (player.getS1RemainingShots() > 0) {
-                p.setPiercing(true);
-                player.useS1Shot();
+                Projectile p = new Projectile(player.getX()+15, player.getY()+15, targetDx, targetDy, Projectile.PLAYER_TYPE, 8);
+                if (player.getS1RemainingShots() > 0) {
+                    p.setPiercing(true);
+                    player.useS1Shot();
+                }
+                projectiles.add(p);
+                player.useBullet();
+                shootCooldown = 15;
+            } else if (player.getRemainingBullets() <= 0 && input.isMouseClicked()) {
+                soundManager.playEffect("sfx_low_ammo.wav"); // Klik saat peluru habis
             }
-            projectiles.add(p);
-            player.useBullet();
-            shootCooldown = 15;
         }
         if (shootCooldown > 0) shootCooldown--;
 
         for (Yeti y : yetis) {
             if (rand.nextInt(300) < 2) {
+                soundManager.playEffect("sfx_yeti_shoot.wav");
                 projectiles.add(new Projectile(y.getX()+30, y.getY()+30, player.getX()-y.getX(), player.getY()-y.getY(), Projectile.YETI_TYPE, 6));
             }
         }
@@ -280,7 +312,10 @@ public class GamePresenter {
                     y.takeDamage(100);
                     p.setHit(true);
                     if (!p.isPiercing()) p.setActive(false);
-                    if (!y.isAlive()) player.registerKill(100);
+                    if (!y.isAlive()){
+                        soundManager.playEffect("sfx_yeti_die.wav");
+                        player.registerKill(100);
+                    }
                 }
             }
         }

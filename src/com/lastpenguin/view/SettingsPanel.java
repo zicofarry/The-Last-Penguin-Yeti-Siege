@@ -14,10 +14,11 @@ public class SettingsPanel extends JPanel {
     private JCheckBox musicToggle, sfxToggle, mouseCheck;
     private JButton btnKeyS1, btnKeyS2, btnKeyS3;
     private int tempKeyS1, tempKeyS2, tempKeyS3;
+    private Runnable onChange; // Callback untuk autosave
 
-    // UPDATE: Konstruktor sekarang menerima 3 parameter
-    public SettingsPanel(GameSettings current, boolean isIngame, ActionListener backAction) {
-        setLayout(new GridLayout(9, 2, 10, 10)); // Ubah ke 9 baris untuk SFX
+    public SettingsPanel(GameSettings current, boolean isIngame, Runnable onChange, ActionListener backAction) {
+        this.onChange = onChange;
+        setLayout(new GridLayout(9, 2, 10, 10));
         setBorder(BorderFactory.createEmptyBorder(30, 80, 30, 80));
         setBackground(new Color(220, 240, 255));
 
@@ -25,35 +26,43 @@ public class SettingsPanel extends JPanel {
         tempKeyS2 = current.getKeyS2();
         tempKeyS3 = current.getKeyS3();
 
+        // Difficulty & Mode
         diffBox = new JComboBox<>(new String[]{GameSettings.EASY, GameSettings.MEDIUM, GameSettings.HARD});
         diffBox.setSelectedItem(current.getDifficulty());
+        diffBox.addActionListener(e -> onChange.run()); // Autosave saat ganti
 
         modeBox = new JComboBox<>(new String[]{GameSettings.OFFLINE, GameSettings.ONLINE});
         modeBox.setSelectedItem(current.getMode());
+        modeBox.addActionListener(e -> onChange.run()); // Autosave saat ganti
 
-        // LOGIKA: Matikan pilihan jika sedang di dalam game
         if (isIngame) {
             diffBox.setEnabled(false);
             modeBox.setEnabled(false);
         }
 
+        // Toggles
         musicToggle = new JCheckBox("Music ON", current.getMusicVolume() > 0);
         musicToggle.setBackground(new Color(220, 240, 255));
-        
+        musicToggle.addActionListener(e -> onChange.run()); // Autosave + Music Trigger
+
         sfxToggle = new JCheckBox("SFX ON", current.getSfxVolume() > 0);
         sfxToggle.setBackground(new Color(220, 240, 255));
-        
+        sfxToggle.addActionListener(e -> onChange.run());
+
         mouseCheck = new JCheckBox("Enable Mouse Aim & Shoot", current.isUseMouse());
         mouseCheck.setBackground(new Color(220, 240, 255));
+        mouseCheck.addActionListener(e -> onChange.run());
 
+        // Keys
         btnKeyS1 = createKeyButton(tempKeyS1, 1);
         btnKeyS2 = createKeyButton(tempKeyS2, 2);
         btnKeyS3 = createKeyButton(tempKeyS3, 3);
 
-        JButton btnSave = new JButton("SAVE & BACK");
-        btnSave.setFont(new Font("Arial", Font.BOLD, 14));
-        btnSave.setBackground(new Color(100, 200, 100));
-        btnSave.addActionListener(backAction);
+        // Tombol BACK saja (tidak ada logika save di sini)
+        JButton btnBack = new JButton("BACK");
+        btnBack.setFont(new Font("Arial", Font.BOLD, 14));
+        btnBack.setBackground(new Color(150, 150, 150));
+        btnBack.addActionListener(backAction);
 
         add(new JLabel("Game Difficulty:")); add(diffBox);
         add(new JLabel("Game Mode:")); add(modeBox);
@@ -63,7 +72,7 @@ public class SettingsPanel extends JPanel {
         add(new JLabel("Skill 1 Key:")); add(btnKeyS1);
         add(new JLabel("Skill 2 Key:")); add(btnKeyS2);
         add(new JLabel("Skill 3 Key:")); add(btnKeyS3);
-        add(new JLabel("")); add(btnSave);
+        add(new JLabel("")); add(btnBack);
     }
 
     private JButton createKeyButton(int initialKey, int skillNum) {
@@ -83,6 +92,7 @@ public class SettingsPanel extends JPanel {
                 btn.setText(KeyEvent.getKeyText(newKey));
                 btn.setBackground(null);
                 SettingsPanel.this.requestFocusInWindow();
+                onChange.run(); // Autosave setelah ganti tombol
             }
         });
         return btn;
