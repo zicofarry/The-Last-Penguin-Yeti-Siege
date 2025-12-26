@@ -1,100 +1,175 @@
-/**
- * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
- * Email: mhmmdzmslm36@gmail.com
- * GitHub: https://github.com/zicofarry
- */
 package com.lastpenguin.view;
-import com.lastpenguin.model.SQLiteManager;
+
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
 
-/**
- * The main menu screen.
- * Provides navigation to Start Game, Settings, and Exit.
- * * @author Muhammad 'Azmi Salam
- */
 public class MenuPanel extends JPanel {
-    private JTextField usernameField;
-    private JTable leaderboardTable;
-    private JScrollPane scrollPane;
 
-    public MenuPanel(ActionListener playAction, ActionListener settingsAction) {
-        setLayout(new BorderLayout(10, 10)); 
-        setBackground(new Color(200, 230, 255));
-        setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
+    private Image backgroundImage;
+    private JTextField nameInputField;
+    private JTextArea leaderboardArea;
+    private JButton playButton, settingsButton, exitButton;
+    private Font customFont;
+    private Sound SoundManager = new Sound();
 
-        JLabel title = new JLabel("THE LAST PENGUIN: YETI SIEGE", SwingConstants.CENTER);
-        title.setFont(new Font("Arial", Font.BOLD, 28));
-        add(title, BorderLayout.NORTH);
-        
-        JPanel centerPanel = new JPanel(new BorderLayout(5, 5));
-        
-        // --- TAB FILTER DIFFICULTY ---
-        JPanel tabPanel = new JPanel(new GridLayout(1, 3));
-        JButton btnEasy = new JButton("EASY");
-        JButton btnMed = new JButton("MEDIUM");
-        JButton btnHard = new JButton("HARD");
+    // PERBAIKAN 1a: Simpan listener yang diterima dari Main
+    private ActionListener playListener;
+    private ActionListener settingsListener;
 
-        btnEasy.addActionListener(e -> refreshLeaderboard("EASY"));
-        btnMed.addActionListener(e -> refreshLeaderboard("MEDIUM"));
-        btnHard.addActionListener(e -> refreshLeaderboard("HARD"));
+    // PERBAIKAN 1b: Constructor diubah untuk menerima listener dari Main.java
+    public MenuPanel(ActionListener playListener, ActionListener settingsListener) {
+        this.playListener = playListener;
+        this.settingsListener = settingsListener;
 
-        tabPanel.add(btnEasy); tabPanel.add(btnMed); tabPanel.add(btnHard);
-        centerPanel.add(tabPanel, BorderLayout.NORTH);
+        // PENTING: Gunakan null layout untuk penempatan pixel presisi di atas gambar
+        this.setLayout(null);
 
-        // Leaderboard Table
-        leaderboardTable = new JTable(SQLiteManager.getLeaderboardData("EASY"));
-        scrollPane = new JScrollPane(leaderboardTable);
-        centerPanel.add(scrollPane, BorderLayout.CENTER);
+        loadResources();
+        initComponents();
+    }
 
-        // Agar bisa klik nama di tabel lalu masuk ke textfield
-        leaderboardTable.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                int row = leaderboardTable.getSelectedRow();
-                if (row != -1) usernameField.setText(leaderboardTable.getValueAt(row, 0).toString());
-            }
-        });
-        
-        centerPanel.add(new JScrollPane(leaderboardTable), BorderLayout.CENTER);
+    private void loadResources() {
+        // 1. Load Gambar Background
+        try {
+            // Pastikan path ini benar
+            backgroundImage = new javax.swing.ImageIcon("res/assets/images/ui/main_menu_bg.png").getImage();
+        } catch (Exception e) {
+            System.err.println("Gagal load background menu: " + e.getMessage());
+        }
 
-        JPanel inputPanel = new JPanel();
-        inputPanel.setOpaque(false);
-        inputPanel.add(new JLabel("USERNAME:"));
-        usernameField = new JTextField(15);
-        usernameField.addKeyListener(new java.awt.event.KeyAdapter() {
+        // 2. Load Font Kustom
+        try {
+            customFont = Font.createFont(Font.TRUETYPE_FONT, new File("res/assets/fonts/icy_font.ttf")).deriveFont(24f);
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            ge.registerFont(customFont);
+        } catch (IOException | FontFormatException e) {
+            System.err.println("Gagal load font, pakai default Arial. Pastikan file .ttf ada di res/assets/fonts/");
+            customFont = new Font("Arial", Font.BOLD, 24);
+        }
+    }
+
+    private void initComponents() {
+        // Warna untuk teks agar terlihat seperti di atas kayu (cokelat tua)
+        Color woodTextColor = new Color(60, 40, 20);
+
+        // --- A. SETUP INPUT NAMA (Papan Atas) ---
+        nameInputField = new JTextField("Player Name");
+        // TENTUKAN KOORDINAT DISINI: setBounds(x, y, width, height)
+        // NANTI HARUS DISESUAIKAN LAGI AGAR PAS DENGAN GAMBAR
+        nameInputField.setBounds(240, 160, 300, 30);
+
+        // Styling
+        nameInputField.setOpaque(false);
+        nameInputField.setBorder(null);
+        if (customFont != null) {
+             nameInputField.setFont(customFont.deriveFont(Font.BOLD, 28f));
+        }
+        nameInputField.setForeground(woodTextColor);
+        nameInputField.setHorizontalAlignment(JTextField.CENTER);
+        nameInputField.getCaret().setVisible(true);
+
+        // Efek Suara Keyboard
+        nameInputField.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyTyped(java.awt.event.KeyEvent e) {
-                // Pastikan Anda sudah memiliki akses ke soundManager atau panggil secara statis/instansi baru
-                new Sound().playEffect("sfx_keyboard.wav");
+            public void keyTyped(KeyEvent e) {
+                // PERBAIKAN 3: Baris ini dikomen dulu karena SoundManager belum siap
+                SoundManager.playEffect("sfx_keyboard.wav");
+                 // System.out.println("Bunyi: Tik! (Placeholder)"); // Debug
             }
         });
-        inputPanel.add(usernameField);
-        centerPanel.add(inputPanel, BorderLayout.SOUTH);
-        
-        add(centerPanel, BorderLayout.CENTER);
+        this.add(nameInputField);
 
-        // BAWAH: BUTTONS
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setOpaque(false);
-        
-        JButton btnPlay = new JButton("START GAME");
-        JButton btnSettings = new JButton("SETTINGS");
-        JButton btnExit = new JButton("EXIT");
 
-        btnPlay.addActionListener(playAction);
-        btnSettings.addActionListener(settingsAction);
-        btnExit.addActionListener(e -> System.exit(0));
+        // --- B. SETUP LEADERBOARD (Papan Tengah Besar) ---
+        leaderboardArea = new JTextArea();
+        // TENTUKAN KOORDINAT DISINI NANTI:
+        leaderboardArea.setBounds(150, 150, 500, 300);
 
-        buttonPanel.add(btnPlay);
-        buttonPanel.add(btnSettings);
-        buttonPanel.add(btnExit);
-        add(buttonPanel, BorderLayout.SOUTH);
+        // Styling
+        leaderboardArea.setOpaque(false);
+        leaderboardArea.setBorder(null);
+        if (customFont != null) {
+            leaderboardArea.setFont(customFont.deriveFont(20f));
+        }
+        leaderboardArea.setForeground(woodTextColor);
+        leaderboardArea.setEditable(false);
+        leaderboardArea.setLineWrap(true);
+        leaderboardArea.setWrapStyleWord(true);
+        leaderboardArea.setText("TOP SCORES:\n(Loading...)");
+        this.add(leaderboardArea);
+
+
+        // --- C. SETUP TOMBOL (Papan Bawah) ---
+        playButton = createStyledButton("PLAY");
+        settingsButton = createStyledButton("SETTINGS");
+        exitButton = createStyledButton("EXIT");
+
+        // TENTUKAN KOORDINAT TOMBOL NANTI:
+        int buttonY = 480;
+        int buttonWidth = 150;
+        int buttonHeight = 50;
+
+        playButton.setBounds(190, buttonY, buttonWidth, buttonHeight);
+        settingsButton.setBounds(330, buttonY, buttonWidth, buttonHeight);
+        exitButton.setBounds(475, buttonY, buttonWidth, buttonHeight);
+
+        // PERBAIKAN 1c: Gunakan listener yang dikirim dari Main.java
+        playButton.addActionListener(this.playListener);
+        settingsButton.addActionListener(this.settingsListener);
+
+        // Tombol exit bisa langsung ditangani di sini
+        exitButton.addActionListener(e -> System.exit(0));
+
+
+        this.add(playButton);
+        this.add(settingsButton);
+        this.add(exitButton);
     }
 
-    private void refreshLeaderboard(String diff) {
-        leaderboardTable.setModel(SQLiteManager.getLeaderboardData(diff));
+
+    // Helper method untuk membuat tombol
+    private JButton createStyledButton(String text) {
+        JButton btn = new JButton(text);
+        if (customFont != null) {
+            btn.setFont(customFont.deriveFont(Font.BOLD, 22f));
+        }
+        btn.setForeground(new Color(220, 200, 180));
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setOpaque(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) { btn.setForeground(Color.WHITE); }
+            @Override
+            public void mouseExited(MouseEvent e) { btn.setForeground(new Color(220, 200, 180)); }
+        });
+        return btn;
     }
-    public String getUsername() { return usernameField.getText().trim(); }
-    
+
+    // PERBAIKAN 2: Ubah nama method jadi getUsername() agar sesuai dengan Main.java
+    public String getUsername() {
+        return nameInputField.getText();
+    }
+
+    // Method untuk update leaderboard dari luar (nanti dipakai Presenter)
+    public void updateLeaderboard(String text) {
+        leaderboardArea.setText(text);
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        if (backgroundImage != null) {
+            g.drawImage(backgroundImage, 0, 0, this.getWidth(), this.getHeight(), this);
+        }
+    }
 }
