@@ -15,6 +15,8 @@ package com.lastpenguin.model;
 public class Obstacle {
     private int x, y;
     private int width, height;
+    private boolean isHole = false;
+    private int duration = -1;
 
     /**
      * Constructs a new static obstacle.
@@ -24,13 +26,18 @@ public class Obstacle {
      * @param height Height of the obstacle.
      */
     public Obstacle(int x, int y, int width, int height) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
+        this.x = x; this.y = y; this.width = width; this.height = height;
     }
 
-    // Getters
+    public Obstacle(int x, int y, int width, int height, boolean isHole, int duration) {
+        this(x, y, width, height);
+        this.isHole = isHole;
+        this.duration = duration;
+    }
+
+    public void update() { if (duration > 0) duration--; }
+    public boolean isExpired() { return isHole && duration == 0; }
+    public boolean isHole() { return isHole; }
     public int getX() { return x; }
     public int getY() { return y; }
     public int getWidth() { return width; }

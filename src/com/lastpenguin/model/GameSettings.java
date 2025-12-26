@@ -4,6 +4,7 @@
  * GitHub: https://github.com/zicofarry
  */
 package com.lastpenguin.model;
+import java.awt.event.KeyEvent;
 
 /**
  * Holds global game configurations and user preferences.
@@ -22,6 +23,11 @@ public class GameSettings {
     // Mode Constants
     public static final String OFFLINE = "OFFLINE";
     public static final String ONLINE = "ONLINE";
+
+    private int keyS1 = KeyEvent.VK_1;
+    private int keyS2 = KeyEvent.VK_2;
+    private int keyS3 = KeyEvent.VK_3;
+    private boolean useMouse = true;
 
     private int musicVolume;
     private int sfxVolume;
@@ -60,4 +66,13 @@ public class GameSettings {
 
     public String getMode() { return mode; }
     public void setMode(String mode) { this.mode = mode; }
+
+    public int getKeyS1() { return keyS1; }
+    public void setKeyS1(int key) { this.keyS1 = key; }
+    public int getKeyS2() { return keyS2; }
+    public void setKeyS2(int key) { this.keyS2 = key; }
+    public int getKeyS3() { return keyS3; }
+    public void setKeyS3(int key) { this.keyS3 = key; }
+    public boolean isUseMouse() { return useMouse; }
+    public void setUseMouse(boolean useMouse) { this.useMouse = useMouse; }
 }

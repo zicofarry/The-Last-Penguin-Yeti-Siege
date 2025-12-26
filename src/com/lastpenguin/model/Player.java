@@ -18,6 +18,9 @@ public class Player {
     private int x, y, score, remainingBullets, yetiKilled, missedShots;
     private int lastDx = 0, lastDy = -1; // Default facing Up
     private boolean alive = true;
+    private int cooldownS1 = 0, cooldownS2 = 0, cooldownS3 = 0;
+    private int s1RemainingShots = 0;
+    private int ghostDuration = 0;
 
     public Player(String username) {
         this.username = username;
@@ -79,4 +82,23 @@ public class Player {
         this.score += points; 
         this.yetiKilled++;
     }
+    public void updateTimers() {
+        if (cooldownS1 > 0) cooldownS1--;
+        if (cooldownS2 > 0) cooldownS2--;
+        if (cooldownS3 > 0) cooldownS3--;
+        if (ghostDuration > 0) ghostDuration--;
+    }
+
+    // Getters & Setters
+    public int getCooldownS1() { return cooldownS1; }
+    public int getCooldownS2() { return cooldownS2; }
+    public int getCooldownS3() { return cooldownS3; }
+    public void setCooldownS1(int v) { this.cooldownS1 = v; }
+    public void setCooldownS2(int v) { this.cooldownS2 = v; }
+    public void setCooldownS3(int v) { this.cooldownS3 = v; }
+    public int getS1RemainingShots() { return s1RemainingShots; }
+    public void useS1Shot() { if(s1RemainingShots > 0) s1RemainingShots--; }
+    public void setS1RemainingShots(int v) { this.s1RemainingShots = v; }
+    public boolean isGhost() { return ghostDuration > 0; }
+    public void setGhostDuration(int v) { this.ghostDuration = v; }
 }

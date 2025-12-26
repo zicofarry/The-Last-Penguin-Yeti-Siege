@@ -68,6 +68,11 @@ public class HUD {
         
         // Draw Health Bar (Bonus for visual feedback)
         drawHealthBar(g, player.getHealth());
+        int startX = 600, startY = 500;
+        g.setFont(labelFont);
+        drawSkillIcon(g, "1. Snowball", player.getCooldownS1(), startX, startY);
+        drawSkillIcon(g, "2. Meteor", player.getCooldownS2(), startX, startY + 25);
+        drawSkillIcon(g, "3. Ghost", player.getCooldownS3(), startX, startY + 50);
     }
 
     /**
@@ -85,5 +90,11 @@ public class HUD {
         g.setColor(Color.WHITE);
         g.drawRect(580, 20, 200, 20); // Outline
         g.drawString("HP", 555, 35);
+    }
+
+    private void drawSkillIcon(Graphics g, String name, int cooldown, int x, int y) {
+        g.setColor(cooldown > 0 ? Color.GRAY : Color.GREEN);
+        String status = cooldown > 0 ? (cooldown/60) + "s" : "READY";
+        g.drawString(name + ": " + status, x, y);
     }
 }

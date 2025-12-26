@@ -1,6 +1,3 @@
-/**
- * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
- */
 package com.lastpenguin.presenter;
 
 import com.lastpenguin.model.*;
@@ -21,21 +18,27 @@ public class GamePresenter {
     private int spawnTimer = 0;
     private int shootCooldown = 0;
     
-    private Timer gameLoop; // Referensi timer untuk menghentikan loop saat mati
+    private Timer gameLoop;
     private Runnable onGameOverCallback;
-    private boolean isGameOverCalled = false; // Flag untuk mencegah duplikasi simpan skor
+    private boolean isGameOverCalled = false;
 
     public GamePresenter(Player player, GamePanel view, GameSettings settings, Runnable onGameOver) {
         this.player = player;
         this.view = view;
         this.settings = settings;
         this.input = new InputHandler();
+        
+        // PENTING: Tambahkan Listener Mouse ke view
         this.view.addKeyListener(input);
+        this.view.addMouseListener(input);
+        this.view.addMouseMotionListener(input);
+        
         this.onGameOverCallback = onGameOver;
-        spawnObstacles();
+        spawnInitialObstacles();
+        this.input.setSettings(settings);
     }
 
-    private void spawnObstacles() {
+    private void spawnInitialObstacles() {
         Rectangle playerSafeZone = new Rectangle(player.getX() - 50, player.getY() - 50, 150, 150);
         for(int i = 0; i < 5; i++) {
             int ox, oy;
@@ -45,19 +48,15 @@ public class GamePresenter {
                 oy = rand.nextInt(350) + 50;
                 obsRect = new Rectangle(ox, oy, 80, 80);
             } while (obsRect.intersects(playerSafeZone));
-            
             obstacles.add(new Obstacle(ox, oy, 80, 80));
         }
     }
 
     public void update() {
-        // Logika Game Over
         if (!player.isAlive()) {
             if (!isGameOverCalled) {
-                isGameOverCalled = true; // Kunci agar proses ini hanya jalan 1x
-                if (gameLoop != null) gameLoop.stop(); // Hentikan loop game segera!
-
-                // Beri jeda 2 detik agar pemain melihat tulisan "GAME OVER" sebelum pindah
+                isGameOverCalled = true;
+                if (gameLoop != null) gameLoop.stop();
                 Timer delayTimer = new Timer(2000, e -> {
                     ((Timer)e.getSource()).stop();
                     if (onGameOverCallback != null) onGameOverCallback.run();
@@ -68,114 +67,165 @@ public class GamePresenter {
             return; 
         }
         
-        if (input.isPaused()) return;
+        // Sinkronkan UI Pause dengan state input
+        view.updatePauseUI(input.isPaused());
 
+        if (input.isPaused()) { 
+            view.repaint(); 
+            return; 
+        }
+        
+        player.updateTimers();
+        handleSkills();
         handleMovement();
         handleCombat();
         checkCollisions();
         
-        // Logika Difficulty Terintegrasi
-        int spawnRate = 240; // Default Easy
-        int diffVal = 1;     // Kecepatan Yeti (Easy)
-
-        if (settings.getDifficulty().equals(GameSettings.MEDIUM)) {
-            spawnRate = 120; // Medium: Spawn lebih cepat
-            diffVal = 2;     // Medium: Yeti lebih cepat
-        } else if (settings.getDifficulty().equals(GameSettings.HARD)) {
-            spawnRate = 80;  // Hard: Spawn sangat cepat
-            diffVal = 3;     // Hard: Yeti sangat agresif/cepat
-        }
-
+        obstacles.removeIf(o -> {
+            o.update();
+            return o.isExpired();
+        });
+        
+        // Spawning Yeti logic...
+        int spawnRate = settings.getDifficulty().equals(GameSettings.HARD) ? 80 : 
+                        settings.getDifficulty().equals(GameSettings.MEDIUM) ? 120 : 200;
         spawnTimer++;
         if (spawnTimer > spawnRate) {
-            yetis.add(new Yeti(rand.nextInt(700), 580, diffVal)); 
+            yetis.add(new Yeti(rand.nextInt(700), 580, settings.getDifficulty().equals(GameSettings.HARD) ? 3 : 1)); 
             spawnTimer = 0;
         }
         view.repaint();
     }
 
-    // Bagian handleMovement yang sudah diperbaiki
     private void handleMovement() {
         int dx = 0, dy = 0;
         if (input.isUp()) dy--; if (input.isDown()) dy++;
         if (input.isLeft()) dx--; if (input.isRight()) dx++;
         
-        // 1. Player Movement (Hanya jika ada input)
         if (dx != 0 || dy != 0) {
+            Rectangle currentBounds = player.getBounds();
             Rectangle nextBounds = new Rectangle(player.getX() + dx * 5, player.getY() + dy * 5, 40, 40);
             boolean blocked = false;
+
             for (Obstacle o : obstacles) {
-                if (nextBounds.intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
-                    blocked = true; break;
+                Rectangle obsBounds = new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight());
+                if (nextBounds.intersects(obsBounds)) {
+                    // LOGIKA ANTI-STUCK: Jika itu lubang, hanya blokir jika pemain sebelumnya di luar lubang
+                    if (o.isHole()) {
+                        if (!currentBounds.intersects(obsBounds)) { blocked = true; break; }
+                    } else {
+                        blocked = true; break;
+                    }
                 }
             }
             if (!blocked) player.move(dx, dy);
         }
 
-        // 2. Yeti Movement (Yeti TERUS BERGERAK mencari player meskipun player diam)
         for (Yeti y : yetis) {
-            int oldX = y.getX();
-            int oldY = y.getY();
-            y.trackPlayer(player.getX(), player.getY());
+            int oldX = y.getX(); int oldY = y.getY();
             
-            // Cek tabrakan Yeti dengan Obstacle
+            // Skill 3: Jika Ghost aktif, Yeti tidak bisa melihat posisi Penguin (gerak acak)
+            if (player.isGhost()) y.trackPlayer(rand.nextInt(800), rand.nextInt(600));
+            else y.trackPlayer(player.getX(), player.getY());
+            
             for (Obstacle o : obstacles) {
                 if (y.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
-                    y.moveBack(y.getX() - oldX, y.getY() - oldY); // Yeti tidak bisa tembus batu
+                    y.moveBack(y.getX() - oldX, y.getY() - oldY);
                     break;
                 }
             }
         }
     }
 
+    private void handleSkills() {
+        // SKILL 1: Giant Snowball
+        if (input.isS1() && player.getCooldownS1() == 0 && player.getRemainingBullets() >= 5) {
+            player.addBullets(-5);
+            player.setS1RemainingShots(3);
+            player.setCooldownS1(600); 
+        }
+
+        // SKILL 2: Meteor
+        if (input.isS2() && player.getCooldownS2() == 0 && player.getRemainingBullets() >= 10) {
+            player.addBullets(-10);
+            // Jika mouse diklik, meteor jatuh di mouse, jika tidak di posisi penguin
+            int tx = (input.getMouseX() > 0) ? input.getMouseX() - 40 : player.getX();
+            int ty = (input.getMouseY() > 0) ? input.getMouseY() - 40 : player.getY();
+            
+            yetis.removeIf(y -> {
+                double dist = Math.sqrt(Math.pow(y.getX() - tx, 2) + Math.pow(y.getY() - ty, 2));
+                if (dist < 200) { player.registerKill(100); return true; }
+                return false;
+            });
+            
+            obstacles.add(new Obstacle(tx, ty, 80, 80, true, 300)); 
+            player.setCooldownS2(900); 
+        }
+
+        // SKILL 3: Ghost
+        if (input.isS3() && player.getCooldownS3() == 0 && player.getRemainingBullets() >= 3) {
+            player.addBullets(-3);
+            player.setGhostDuration(300); 
+            player.setCooldownS3(600); 
+        }
+    }
+
     private void handleCombat() {
-        // Tembakan Player (Kecepatan tetap 8)
-        if (input.isShooting() && player.getRemainingBullets() > 0 && shootCooldown == 0) {
-            projectiles.add(new Projectile(player.getX() + 15, player.getY() + 15, 
-                        player.getLastDx(), player.getLastDy(), Projectile.PLAYER_TYPE, 8));
+        boolean wantToShoot = input.isShooting() || (settings.isUseMouse() && input.isMouseClicked());
+        if (wantToShoot && player.getRemainingBullets() > 0 && shootCooldown == 0) {
+            double targetDx, targetDy;
+           if (settings.isUseMouse() && input.isMouseClicked()) {
+                targetDx = input.getMouseX() - (player.getX() + 25);
+                targetDy = input.getMouseY() - (player.getY() + 25);
+            } else {
+                targetDx = player.getLastDx(); 
+                targetDy = player.getLastDy();
+            }
+
+            Projectile p = new Projectile(player.getX()+15, player.getY()+15, targetDx, targetDy, Projectile.PLAYER_TYPE, 8);
+            
+            if (player.getS1RemainingShots() > 0) {
+                p.setPiercing(true); // Skill 1 aktif
+                player.useS1Shot();
+            }
+            
+            projectiles.add(p);
             player.useBullet();
-            shootCooldown = 20;
+            shootCooldown = 15;
         }
         if (shootCooldown > 0) shootCooldown--;
 
-        // Tembakan Yeti (Presisi & Difficulty Speed)
-        int shootChance = settings.getDifficulty().equals(GameSettings.EASY) ? 400 : 200;
-        int bulletSpeed = 8; // Default Medium (Sama dengan player)
-        
-        if (settings.getDifficulty().equals(GameSettings.EASY)) bulletSpeed = 5;
-        else if (settings.getDifficulty().equals(GameSettings.HARD)) bulletSpeed = 12;
-
+        // Tembakan Yeti
         for (Yeti y : yetis) {
-            if (rand.nextInt(shootChance) < 2) {
-                // Hitung arah presisi ke Player (Targeting pusat player)
-                double targetX = player.getX() + 20;
-                double targetY = player.getY() + 20;
-                double diffX = targetX - (y.getX() + 30);
-                double diffY = targetY - (y.getY() + 30);
-                
-                projectiles.add(new Projectile(y.getX() + 30, y.getY() + 30, diffX, diffY, Projectile.YETI_TYPE, bulletSpeed));
+            if (rand.nextInt(300) < 2) {
+                projectiles.add(new Projectile(y.getX()+30, y.getY()+30, player.getX()-y.getX(), player.getY()-y.getY(), Projectile.YETI_TYPE, 6));
             }
         }
 
-        // Update Projectiles & Collision dengan Obstacle
         Iterator<Projectile> it = projectiles.iterator();
         while (it.hasNext()) {
             Projectile p = it.next();
             p.update();
             
-            // SEMUA Peluru hancur jika menabrak Obstacle
-            boolean hitObstacle = false;
-            for (Obstacle o : obstacles) {
-                if (p.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
-                    p.setActive(false);
-                    hitObstacle = true;
-                    break;
+            // Skill 1: Giant Snowball menembus obstacle
+            if (!p.isPiercing()) {
+                for (Obstacle o : obstacles) {
+                    if (!o.isHole() && p.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
+                        p.setActive(false); break;
+                    }
                 }
             }
 
-            if (!p.isActive()) {
-                if (p.getOwner().equals(Projectile.PLAYER_TYPE) && !p.isHit()) player.registerMiss();
-                if (p.getOwner().equals(Projectile.YETI_TYPE)) player.addBullets(1);
+            // --- BAGIAN LOGIKA REFILL PELURU (DIPERBAIKI) ---
+            if (!p.isActive() || p.getX() < 0 || p.getX() > 800 || p.getY() < 0 || p.getY() > 600) {
+                // Jika peluru Yeti hilang (kena batu atau keluar layar), player dapat peluru
+                if (p.getOwner().equals(Projectile.YETI_TYPE)) {
+                    player.addBullets(1);
+                } 
+                // Jika peluru Player hilang dan belum mengenai musuh, catat sebagai Miss
+                else if (p.getOwner().equals(Projectile.PLAYER_TYPE) && !p.isHit()) {
+                    player.registerMiss();
+                }
                 it.remove();
             }
         }
@@ -184,14 +234,16 @@ public class GamePresenter {
     private void checkCollisions() {
         Rectangle pBounds = player.getBounds();
         for (Projectile p : projectiles) {
-            if (!p.getOwner().equals(Projectile.PLAYER_TYPE)) {
-                if (p.getBounds().intersects(pBounds)) player.die();
+            if (p.getOwner().equals(Projectile.YETI_TYPE)) {
+                // Skill 3: Peluru yeti tembus penguin saat Ghost
+                if (!player.isGhost() && p.getBounds().intersects(pBounds)) player.die();
             } else {
                 for (Yeti y : yetis) {
                     if (p.getBounds().intersects(y.getBounds())) {
-                        y.takeDamage(50);
-                        p.setActive(false);
-                        p.setHit(true); // TANDAI SEBAGAI HIT
+                        y.takeDamage(100);
+                        p.setHit(true); // TANDAI SUDAH KENA AGAR TIDAK DIANGGAP MISS
+                        
+                        if (!p.isPiercing()) p.setActive(false); // Peluru biasa hancur, Giant nembus
                         if (!y.isAlive()) player.registerKill(100);
                     }
                 }
@@ -207,7 +259,12 @@ public class GamePresenter {
     public InputHandler getInput() { return input; }
     
     public void startGame() { 
-        gameLoop = new Timer(16, e -> update());
-        gameLoop.start(); 
+    view.requestFocusInWindow(); // Pastikan fokus saat timer mulai
+    gameLoop = new Timer(16, e -> update());
+    gameLoop.start(); 
+}
+    public void surrender() {
+        player.die(); // Set status mati agar loop berhenti dan skor tersimpan
+        update(); // Panggil update sekali lagi untuk memicu logika Game Over & simpan skor
     }
 }
