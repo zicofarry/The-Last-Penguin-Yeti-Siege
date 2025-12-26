@@ -235,33 +235,36 @@ public class GamePresenter {
 
     private void handleCombat() {
         boolean wantToShoot = input.isShooting() || (settings.isUseMouse() && input.isMouseClicked());
-        if (wantToShoot){
-            if(player.getRemainingBullets() > 0 && shootCooldown == 0) {
-                if (player.getS1RemainingShots() > 0) {
-                    soundManager.playEffect("sfx_skill_giant.wav");
-                } else {
-                    soundManager.playEffect("sfx_shoot.wav");
-                }
-                double targetDx, targetDy;
-                if (settings.isUseMouse() && input.isMouseClicked()) {
-                    targetDx = input.getMouseX() - (player.getX() + 25);
-                    targetDy = input.getMouseY() - (player.getY() + 25);
-                } else {
-                    targetDx = player.getLastDx(); 
-                    targetDy = player.getLastDy();
-                }
-
-                Projectile p = new Projectile(player.getX()+15, player.getY()+15, targetDx, targetDy, Projectile.PLAYER_TYPE, 8);
-                if (player.getS1RemainingShots() > 0) {
-                    p.setPiercing(true);
-                    player.useS1Shot();
-                }
-                projectiles.add(p);
-                player.useBullet();
-                shootCooldown = 15;
-            } else if (player.getRemainingBullets() <= 0 && input.isMouseClicked()) {
-                soundManager.playEffect("sfx_low_ammo.wav"); // Klik saat peluru habis
+        
+        // Perbaikan kondisi: Bisa menembak jika memiliki peluru ATAU sisa tembakan Skill 1 aktif
+        if (wantToShoot && shootCooldown == 0 && (player.getRemainingBullets() > 0 || player.getS1RemainingShots() > 0)) {
+            double targetDx, targetDy;
+            if (settings.isUseMouse() && input.isMouseClicked()) {
+                targetDx = input.getMouseX() - (player.getX() + 25);
+                targetDy = input.getMouseY() - (player.getY() + 25);
+            } else {
+                targetDx = player.getLastDx(); 
+                targetDy = player.getLastDy();
             }
+
+            Projectile p = new Projectile(player.getX()+15, player.getY()+15, targetDx, targetDy, Projectile.PLAYER_TYPE, 8);
+            
+            // LOGIKA BARU: Cek apakah Skill 1 (Giant Snowball) sedang aktif
+            if (player.getS1RemainingShots() > 0) {
+                p.setPiercing(true);
+                player.useS1Shot(); // Hanya mengurangi kuota Skill 1, TIDAK mengurangi peluru utama
+                soundManager.playEffect("sfx_skill_giant.wav"); // Suara dipanggil setiap tembakan raksasa
+            } else {
+                player.useBullet(); // Hanya kurangi peluru utama jika menembak biasa
+                soundManager.playEffect("sfx_shoot.wav");
+            }
+            
+            projectiles.add(p);
+            shootCooldown = 15;
+        } else if (wantToShoot && shootCooldown == 0 && player.getRemainingBullets() <= 0 && player.getS1RemainingShots() <= 0) {
+            // Efek suara jika benar-benar kehabisan amunisi
+            soundManager.playEffect("sfx_low_ammo.wav");
+            shootCooldown = 15;
         }
         if (shootCooldown > 0) shootCooldown--;
 
