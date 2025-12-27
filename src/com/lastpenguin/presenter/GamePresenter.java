@@ -36,29 +36,38 @@ public class GamePresenter {
         this.view.addMouseMotionListener(input);
         
         this.onGameOverCallback = onGameOver;
-        spawnInitialObstacles();
+        spawnInitialObstacles(); 
         this.input.setSettings(settings);
         this.soundManager.setSettings(settings);
     }
 
-    private void spawnInitialObstacles() {
+    /**
+     * Menghasilkan satu rintangan acak (Batu 30HP atau Duri 15HP).
+     */
+    private void spawnOneRandomObstacle() {
         Rectangle playerSafeZone = new Rectangle(player.getX() - 50, player.getY() - 50, 150, 150);
+        int ox, oy, initialHp;
+        Rectangle obsRect;
+        do {
+            ox = rand.nextInt(600) + 100;
+            oy = rand.nextInt(350) + 50;
+            obsRect = new Rectangle(ox, oy, 80, 80);
+        } while (obsRect.intersects(playerSafeZone));
+        
+        // Random 50:50 mulai dari Rock (30 HP) atau Spike (15 HP)
+        initialHp = rand.nextBoolean() ? 30 : 15;
+        obstacles.add(new Obstacle(ox, oy, 80, 80, initialHp));
+    }
+
+    private void spawnInitialObstacles() {
+        obstacles.clear();
         for(int i = 0; i < 5; i++) {
-            int ox, oy;
-            Rectangle obsRect;
-            do {
-                ox = rand.nextInt(600) + 100;
-                oy = rand.nextInt(350) + 50;
-                obsRect = new Rectangle(ox, oy, 80, 80);
-            } while (obsRect.intersects(playerSafeZone));
-            obstacles.add(new Obstacle(ox, oy, 80, 80));
+            spawnOneRandomObstacle();
         }
     }
 
     public void update() {
-        // 1. SYNC UI OVERLAY (PENTING!)
-        // Panggil ini di baris pertama agar View tahu kapan harus menampilkan 
-        // panel Pause atau panel Game Over.
+        // 1. SYNC UI OVERLAY
         view.updatePauseUI(input.isPaused());
 
         // 2. LOGIKA GAME OVER
@@ -66,40 +75,48 @@ public class GamePresenter {
             if (!isGameOverCalled) {
                 isGameOverCalled = true;
                 soundManager.playEffect("sfx_game_over.wav");
-                
-                // Simpan skor ke Database lewat callback di Main.java
-                if (onGameOverCallback != null) {
-                    onGameOverCallback.run();
-                }
-                
-                // JANGAN stop gameLoop di sini agar UI tetap responsif 
-                // (untuk mendeteksi klik tombol di papan es Game Over).
+                if (onGameOverCallback != null) onGameOverCallback.run();
             }
-            
-            // Hentikan semua pergerakan, tapi tetap gambar layar (untuk efek redup/dimming)
             view.repaint();
             return; 
         }
         
         // 3. LOGIKA PAUSE
         if (input.isPaused()) { 
-            // Jika pause, hentikan logika di bawah (movement, combat, dll)
             view.repaint(); 
             return; 
         }
         
-        // 4. LOGIKA GAMEPLAY UTAMA (Hanya jalan jika Hidup & Tidak Pause)
+        // 4. LOGIKA GAMEPLAY UTAMA
         player.updateTimers();
         handleSkills();
         handleMovement();
         handleCombat();
         checkCollisions();
         
-        // Update Obstacles
-        obstacles.removeIf(o -> {
+        // --- UPDATE OBSTACLES DENGAN EFEK SUARA HANCUR ---
+        Iterator<Obstacle> obsIt = obstacles.iterator();
+        while (obsIt.hasNext()) {
+            Obstacle o = obsIt.next();
             o.update();
-            return o.isExpired();
-        });
+            
+            // Cek jika hancur karena HP habis (Batu/Duri)
+            if (o.isDestroyed()) {
+                soundManager.playEffect("sfx_ice_break.wav"); // SUARA ES PECAH
+                obsIt.remove();
+            } 
+            // Cek jika menghilang karena durasi habis (Lubang Meteor)
+            else if (o.isExpired()) {
+                obsIt.remove();
+            }
+        }
+
+        // Respawn rintangan jika jumlahnya kurang dari 5 (tidak termasuk lubang meteor)
+        long currentObsCount = obstacles.stream().filter(o -> !o.isHole()).count();
+        while (currentObsCount < 5) {
+            spawnOneRandomObstacle();
+            currentObsCount++;
+        }
         
         // Logika Spawn Yeti
         int spawnRate = settings.getDifficulty().equals(GameSettings.HARD) ? 80 : 
@@ -112,7 +129,6 @@ public class GamePresenter {
             spawnTimer = 0;
         }
 
-        // Refresh Tampilan Gameplay
         view.repaint();
     }
 
@@ -150,52 +166,37 @@ public class GamePresenter {
             int targetX = player.isGhost() ? rand.nextInt(800) : player.getX();
             int targetY = player.isGhost() ? rand.nextInt(600) : player.getY();
 
-            // Hitung arah dasar
-            int moveDx = 0, moveDy = 0;
-            if (oldX < targetX) moveDx = y.getSpeed();
-            else if (oldX > targetX) moveDx = -y.getSpeed();
-            
-            if (oldY < targetY) moveDy = y.getSpeed();
-            else if (oldY > targetY) moveDy = -y.getSpeed();
+            int moveDx = (oldX < targetX) ? y.getSpeed() : (oldX > targetX) ? -y.getSpeed() : 0;
+            int moveDy = (oldY < targetY) ? y.getSpeed() : (oldY > targetY) ? -y.getSpeed() : 0;
 
-            boolean movedX = false;
-            boolean movedY = false;
+            boolean movedX = false, movedY = false;
 
-            // 1. Coba gerak horizontal (X)
             if (moveDx != 0) {
                 y.setPosition(oldX + moveDx, oldY);
                 if (!isYetiColliding(y)) movedX = true;
-                else y.setPosition(oldX, oldY); // Batal jika tabrakan
+                else y.setPosition(oldX, oldY);
             }
 
-            // 2. Coba gerak vertikal (Y)
             if (moveDy != 0) {
-                y.setPosition(y.getX(), oldY + moveDy); // Gunakan X terbaru (hasil langkah 1)
+                y.setPosition(y.getX(), oldY + moveDy);
                 if (!isYetiColliding(y)) movedY = true;
-                else y.setPosition(y.getX(), oldY); // Batal jika tabrakan
+                else y.setPosition(y.getX(), oldY);
             }
 
-            // 3. LOGIKA BYPASS (Mencegah Stuck di sumbu yang sama)
-            // Jika Yeti tidak bisa bergerak maju padahal belum sampai ke target
             if (!movedX && !movedY) {
                 if (moveDx == 0 && moveDy != 0) { 
-                    // Sumbu X sudah sejajar tapi Y terhalang. Geser X secara paksa.
                     y.setPosition(oldX + y.getSpeed(), oldY);
                     if (isYetiColliding(y)) y.setPosition(oldX - y.getSpeed(), oldY);
                 } 
                 else if (moveDy == 0 && moveDx != 0) {
-                    // Sumbu Y sudah sejajar tapi X terhalang. Geser Y secara paksa.
                     y.setPosition(oldX, oldY + y.getSpeed());
                     if (isYetiColliding(y)) y.setPosition(oldX, oldY - y.getSpeed());
                 }
             }
-            
-            // Update arah visual/animasi berdasarkan target
             y.updateAnimation(targetX, targetY);
         }
     }
 
-    // Helper untuk cek tabrakan Yeti
     private boolean isYetiColliding(Yeti y) {
         Rectangle yBounds = y.getBounds();
         for (Obstacle o : obstacles) {
@@ -217,26 +218,18 @@ public class GamePresenter {
         if (input.isS2() && player.getCooldownS2() == 0 && player.getRemainingBullets() >= 10) {
             soundManager.playEffect("sfx_skill_meteor.wav");    
             player.addBullets(-10);
-            
-            // Tentukan ukuran lubang yang lebih besar
             int holeSize = 160; 
-            
-            // Tentukan koordinat target (tengah kursor atau tengah penguin)
             int targetX = (input.getMouseX() > 0) ? input.getMouseX() : player.getX() + 25;
             int targetY = (input.getMouseY() > 0) ? input.getMouseY() : player.getY() + 25;
-
-            // Hitung posisi sudut kiri atas agar gambar tepat di tengah target
             int tx = targetX - (holeSize / 2);
             int ty = targetY - (holeSize / 2);
             
-            // Logika kill tetap luas (radius 200)
             yetis.removeIf(y -> {
                 double dist = Math.sqrt(Math.pow(y.getX() - targetX, 2) + Math.pow(y.getY() - targetY, 2));
                 if (dist < 200) { player.registerKill(100); return true; }
                 return false;
             });
             
-            // Tambahkan lubang dengan ukuran baru (160x160)
             obstacles.add(new Obstacle(tx, ty, holeSize, holeSize, true, 300)); 
             player.setCooldownS2(900); 
         }
@@ -252,7 +245,6 @@ public class GamePresenter {
     private void handleCombat() {
         boolean wantToShoot = input.isShooting() || (settings.isUseMouse() && input.isMouseClicked());
         
-        // Perbaikan kondisi: Bisa menembak jika memiliki peluru ATAU sisa tembakan Skill 1 aktif
         if (wantToShoot && shootCooldown == 0 && (player.getRemainingBullets() > 0 || player.getS1RemainingShots() > 0)) {
             double targetDx, targetDy;
             if (settings.isUseMouse() && input.isMouseClicked()) {
@@ -263,22 +255,34 @@ public class GamePresenter {
                 targetDy = player.getLastDy();
             }
 
-            Projectile p = new Projectile(player.getX()+15, player.getY()+15, targetDx, targetDy, Projectile.PLAYER_TYPE, 8);
+            // PENYESUAIAN POSISI SPAWN BERDASARKAN UKURAN PELURU
+            int startX, startY;
+            boolean isGiant = player.getS1RemainingShots() > 0;
             
-            // LOGIKA BARU: Cek apakah Skill 1 (Giant Snowball) sedang aktif
-            if (player.getS1RemainingShots() > 0) {
-                p.setPiercing(true);
-                player.useS1Shot(); // Hanya mengurangi kuota Skill 1, TIDAK mengurangi peluru utama
-                soundManager.playEffect("sfx_skill_giant.wav"); // Suara dipanggil setiap tembakan raksasa
+            if (isGiant) {
+                // Giant (80x80) center ke Penguin (50x50). Offset = (50-80)/2 = -15
+                startX = player.getX() - 15;
+                startY = player.getY() - 15;
             } else {
-                player.useBullet(); // Hanya kurangi peluru utama jika menembak biasa
+                // Normal (15x15) center ke Penguin (50x50). Offset = (50-15)/2 = 17
+                startX = player.getX() + 17;
+                startY = player.getY() + 17;
+            }
+
+            Projectile p = new Projectile(startX, startY, targetDx, targetDy, Projectile.PLAYER_TYPE, 8);
+            
+            if (isGiant) {
+                p.setPiercing(true);
+                player.useS1Shot();
+                soundManager.playEffect("sfx_skill_giant.wav");
+            } else {
+                player.useBullet();
                 soundManager.playEffect("sfx_shoot.wav");
             }
             
             projectiles.add(p);
             shootCooldown = 15;
         } else if (wantToShoot && shootCooldown == 0 && player.getRemainingBullets() <= 0 && player.getS1RemainingShots() <= 0) {
-            // Efek suara jika benar-benar kehabisan amunisi
             soundManager.playEffect("sfx_low_ammo.wav");
             shootCooldown = 15;
         }
@@ -299,17 +303,17 @@ public class GamePresenter {
             if (!p.isPiercing()) {
                 for (Obstacle o : obstacles) {
                     if (!o.isHole() && p.getBounds().intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
-                        p.setActive(false); break;
+                        o.takeDamage(); 
+                        soundManager.playEffect("sfx_hit_obstacle.wav");
+                        p.setActive(false); 
+                        break;
                     }
                 }
             }
 
             if (!p.isActive() || p.getX() < 0 || p.getX() > 800 || p.getY() < 0 || p.getY() > 600) {
-                if (p.getOwner().equals(Projectile.YETI_TYPE)) {
-                    player.addBullets(1);
-                } else if (p.getOwner().equals(Projectile.PLAYER_TYPE) && !p.isHit()) {
-                    player.registerMiss();
-                }
+                if (p.getOwner().equals(Projectile.YETI_TYPE)) player.addBullets(1);
+                else if (p.getOwner().equals(Projectile.PLAYER_TYPE) && !p.isHit()) player.registerMiss();
                 it.remove();
             }
         }
@@ -317,15 +321,11 @@ public class GamePresenter {
 
     private void checkCollisions() {
         Rectangle pBounds = player.getBounds();
-
         for (Yeti y : yetis) {
-            // KONTAK FISIK: Penguin mati jika ditabrak Yeti
             if (!player.isGhost() && y.getBounds().intersects(pBounds)) {
                 player.die();
                 return;
             }
-            
-            // Peluru Player mengenai Yeti
             for (Projectile p : projectiles) {
                 if (p.getOwner().equals(Projectile.PLAYER_TYPE) && p.getBounds().intersects(y.getBounds())) {
                     y.takeDamage(100);
@@ -338,16 +338,11 @@ public class GamePresenter {
                 }
             }
         }
-
-        // Peluru Yeti mengenai Penguin
         for (Projectile p : projectiles) {
-            if (p.getOwner().equals(Projectile.YETI_TYPE)) {
-                if (!player.isGhost() && p.getBounds().intersects(pBounds)) {
-                    player.die();
-                }
+            if (p.getOwner().equals(Projectile.YETI_TYPE) && !player.isGhost() && p.getBounds().intersects(pBounds)) {
+                player.die();
             }
         }
-        
         yetis.removeIf(y -> !y.isAlive());
     }
 
