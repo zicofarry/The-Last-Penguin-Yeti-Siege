@@ -56,47 +56,63 @@ public class GamePresenter {
     }
 
     public void update() {
+        // 1. SYNC UI OVERLAY (PENTING!)
+        // Panggil ini di baris pertama agar View tahu kapan harus menampilkan 
+        // panel Pause atau panel Game Over.
+        view.updatePauseUI(input.isPaused());
+
+        // 2. LOGIKA GAME OVER
         if (!player.isAlive()) {
             if (!isGameOverCalled) {
                 isGameOverCalled = true;
                 soundManager.playEffect("sfx_game_over.wav");
-                if (gameLoop != null) gameLoop.stop();
-                Timer delayTimer = new Timer(2000, e -> {
-                    ((Timer)e.getSource()).stop();
-                    if (onGameOverCallback != null) onGameOverCallback.run();
-                });
-                delayTimer.setRepeats(false);
-                delayTimer.start();
+                
+                // Simpan skor ke Database lewat callback di Main.java
+                if (onGameOverCallback != null) {
+                    onGameOverCallback.run();
+                }
+                
+                // JANGAN stop gameLoop di sini agar UI tetap responsif 
+                // (untuk mendeteksi klik tombol di papan es Game Over).
             }
+            
+            // Hentikan semua pergerakan, tapi tetap gambar layar (untuk efek redup/dimming)
+            view.repaint();
             return; 
         }
         
-        view.updatePauseUI(input.isPaused());
-
+        // 3. LOGIKA PAUSE
         if (input.isPaused()) { 
+            // Jika pause, hentikan logika di bawah (movement, combat, dll)
             view.repaint(); 
             return; 
         }
         
+        // 4. LOGIKA GAMEPLAY UTAMA (Hanya jalan jika Hidup & Tidak Pause)
         player.updateTimers();
         handleSkills();
         handleMovement();
         handleCombat();
         checkCollisions();
         
+        // Update Obstacles
         obstacles.removeIf(o -> {
             o.update();
             return o.isExpired();
         });
         
+        // Logika Spawn Yeti
         int spawnRate = settings.getDifficulty().equals(GameSettings.HARD) ? 80 : 
                         settings.getDifficulty().equals(GameSettings.MEDIUM) ? 120 : 200;
         spawnTimer++;
         if (spawnTimer > spawnRate) {
-            yetis.add(new Yeti(rand.nextInt(700), 580, settings.getDifficulty().equals(GameSettings.HARD) ? 3 : 1)); 
+            int yetiHealth = settings.getDifficulty().equals(GameSettings.HARD) ? 3 : 1;
+            yetis.add(new Yeti(rand.nextInt(700), 580, yetiHealth)); 
             soundManager.playEffect("sfx_yeti_spawn.wav");
             spawnTimer = 0;
         }
+
+        // Refresh Tampilan Gameplay
         view.repaint();
     }
 

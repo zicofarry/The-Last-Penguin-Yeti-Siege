@@ -11,12 +11,12 @@ public class Main {
     private static GameSettings currentSettings;
     private static MenuPanel menuView; 
     private static SettingsPanel settingsView;
-    private static Sound soundManager = new Sound(); // Pastikan Sound Manager tersedia
+    private static Sound soundManager = new Sound();
 
     public static void main(String[] args) {
         SQLiteManager.initDatabase();
         currentSettings = SQLiteManager.loadSettings();
-        soundManager.setSettings(currentSettings); // Hubungkan settings ke sound
+        soundManager.setSettings(currentSettings);
 
         SwingUtilities.invokeLater(() -> {
             window = new GameWindow();
@@ -26,11 +26,11 @@ public class Main {
     }
 
     public static void showMenu() {
-        soundManager.playMusic("bgm_main.wav"); // Putar musik menu
+        soundManager.playMusic("bgm_main.wav");
         GameSettings settings = SQLiteManager.loadSettings();
         menuView = new MenuPanel(
             e -> {
-                if (menuView.getUsername().isEmpty()) {
+                if (menuView.getUsername().isEmpty() || menuView.getUsername().equals("Player Name")) {
                     JOptionPane.showMessageDialog(window, "Isi username dulu!");
                 } else {
                     startGame(menuView.getUsername()); 
@@ -43,14 +43,11 @@ public class Main {
     }
 
     public static void showSettings(boolean isIngame, Runnable onBackAction) {
-        // Logika Autosave
         Runnable autosave = () -> {
             if (settingsView == null) return;
 
-            // 1. Simpan status musik sebelum diupdate
             boolean wasMusicOn = currentSettings.getMusicVolume() > 0;
 
-            // 2. Sync UI ke model (Update semua pengaturan)
             currentSettings.setDifficulty(settingsView.getSelectedDifficulty());
             currentSettings.setMode(settingsView.getSelectedMode());
             
@@ -63,10 +60,8 @@ public class Main {
             currentSettings.setKeyS2(settingsView.getS2Key());
             currentSettings.setKeyS3(settingsView.getS3Key());
 
-            // 3. Simpan ke Database
             SQLiteManager.updateSettings(currentSettings);
 
-            // 4. LOGIKA PERBAIKAN: Hanya ubah status musik jika ada perubahan ON/OFF
             if (isMusicOnNow != wasMusicOn) {
                 if (isMusicOnNow) {
                     soundManager.playMusic("bgm_main.wav");
@@ -77,7 +72,7 @@ public class Main {
         };
 
         settingsView = new SettingsPanel(currentSettings, isIngame, autosave, e -> {
-            onBackAction.run(); // Tombol BACK
+            onBackAction.run(); 
         });
         window.setView(settingsView);
     }
@@ -86,14 +81,22 @@ public class Main {
         Player player = new Player(username); 
         final GamePanel[] gamePanelRef = new GamePanel[1];
 
+        // 1. Aksi untuk Keluar ke Menu Utama
         ActionListener quitAction = e -> showMenu();
+
+        // 2. Aksi untuk Buka Settings di Tengah Game
         ActionListener settingsAction = e -> showSettings(true, () -> {
             window.setView(gamePanelRef[0]);
             gamePanelRef[0].requestFocusInWindow();
         });
 
-        gamePanelRef[0] = new GamePanel(quitAction, settingsAction);
+        // 3. Aksi untuk Restart Game (Play Again)
+        ActionListener restartAction = e -> startGame(username);
+
+        // Update: Inisialisasi GamePanel dengan 3 parameter Action
+        gamePanelRef[0] = new GamePanel(quitAction, settingsAction, restartAction);
         
+        // Callback saat game berakhir (Hanya simpan data, UI dihandle GamePanel)
         Runnable onGameOver = () -> {
             SQLiteManager.saveScore(
                 player.getUsername(),
@@ -104,7 +107,7 @@ public class Main {
                 currentSettings.getDifficulty(),
                 currentSettings.getMode()
             );
-            showMenu();
+            // Kita tidak memanggil showMenu() di sini agar panel Game Over es tetap terlihat
         };
 
         GamePresenter presenter = new GamePresenter(player, gamePanelRef[0], currentSettings, onGameOver);
