@@ -17,6 +17,7 @@ public class GamePanel extends JPanel {
     private HUD hud = new HUD();
     private BufferedImage arenaImg, penguinSheet, lubangImg, rockImg, spikeImg;
     private BufferedImage ballPImg, ballYImg, ballGiantImg;
+    private BufferedImage meteorImg, targetImg;
     private Image pauseBgImage; 
     private Image gameOverBgImage; 
     private Font customFont;    
@@ -156,6 +157,8 @@ public class GamePanel extends JPanel {
         ballPImg = AssetLoader.loadImage("projectiles/snowball_p.png");
         ballYImg = AssetLoader.loadImage("projectiles/snowball_y.png");
         ballGiantImg = AssetLoader.loadImage("projectiles/snowball_giant.png");
+        meteorImg = AssetLoader.loadImage("projectiles/meteor.png");
+        targetImg = AssetLoader.loadImage("vfx/meteor_target.png");
         try {
             customFont = Font.createFont(Font.TRUETYPE_FONT, new File("res/assets/fonts/icy_font.ttf")).deriveFont(18f);
         } catch (Exception e) { customFont = new Font("Arial", Font.BOLD, 18); }
@@ -194,6 +197,18 @@ public class GamePanel extends JPanel {
                 g.setColor(Color.WHITE);
                 g.drawString(hpText, textX, textY);
             }
+        }
+
+        // RENDER TARGET METEOR (Jika mode aktif)
+        if (presenter.isTargetingMeteor()) {
+            int mx = presenter.getInput().getMouseX();
+            int my = presenter.getInput().getMouseY();
+            g.drawImage(targetImg, mx - 40, my - 40, 80, 80 , null);
+        }
+
+        // RENDER METEOR YANG SEDANG JATUH
+        for (Meteor m : presenter.getActiveMeteors()) {
+            g.drawImage(meteorImg, m.getX(), m.getY(), 80, 80, null);
         }
 
         // --- DRAW PROJECTILES ---
