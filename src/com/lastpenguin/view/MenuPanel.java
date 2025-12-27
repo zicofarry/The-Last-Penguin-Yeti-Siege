@@ -9,6 +9,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import com.lastpenguin.model.SQLiteManager;
 
 public class MenuPanel extends JPanel {
 
@@ -33,6 +34,8 @@ public class MenuPanel extends JPanel {
 
         loadResources();
         initComponents();
+
+        refreshLeaderboard("EASY");
     }
 
     private void loadResources() {
@@ -90,9 +93,12 @@ public class MenuPanel extends JPanel {
         // --- B. SETUP LEADERBOARD (Papan Tengah Besar) ---
         leaderboardArea = new JTextArea();
         // TENTUKAN KOORDINAT DISINI NANTI:
-        leaderboardArea.setBounds(150, 150, 500, 300);
+        leaderboardArea.setBorder(BorderFactory.createLineBorder(Color.RED));
+        // setBounds(x, y, lebar, tinggi)
+        leaderboardArea.setBounds(200, 240, 440, 250);
 
         // Styling
+        leaderboardArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 18));
         leaderboardArea.setOpaque(false);
         leaderboardArea.setBorder(null);
         if (customFont != null) {
@@ -102,6 +108,7 @@ public class MenuPanel extends JPanel {
         leaderboardArea.setEditable(false);
         leaderboardArea.setLineWrap(true);
         leaderboardArea.setWrapStyleWord(true);
+        leaderboardArea.setMargin(new Insets(20, 10, 10, 10));
         leaderboardArea.setText("TOP SCORES:\n(Loading...)");
         this.add(leaderboardArea);
 
@@ -165,6 +172,11 @@ public class MenuPanel extends JPanel {
         leaderboardArea.setText(text);
     }
 
+    public void refreshLeaderboard(String difficulty) {
+        String data = SQLiteManager.getLeaderboardAsText(difficulty);
+        updateLeaderboard(data);
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -172,4 +184,5 @@ public class MenuPanel extends JPanel {
             g.drawImage(backgroundImage, 0, 0, this.getWidth(), this.getHeight(), this);
         }
     }
+
 }

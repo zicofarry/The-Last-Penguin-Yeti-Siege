@@ -17,11 +17,21 @@ public class SQLiteManager {
         if (!directory.exists()) directory.mkdir();
 
         try (Connection conn = connect(); Statement stmt = conn.createStatement()) {
-            // Tabel Players
             stmt.execute("CREATE TABLE IF NOT EXISTS players (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL);");
-            // Tabel Scores
-            stmt.execute("CREATE TABLE IF NOT EXISTS scores (id INTEGER PRIMARY KEY AUTOINCREMENT, player_id INTEGER NOT NULL, score INTEGER NOT NULL, yeti_killed INTEGER NOT NULL, difficulty TEXT NOT NULL, mode TEXT NOT NULL, played_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (player_id) REFERENCES players(id));");
-            // Tabel Settings
+            
+            // PERBAIKAN: Tambahkan missed_shots dan remaining_bullets di CREATE TABLE
+            stmt.execute("CREATE TABLE IF NOT EXISTS scores (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "player_id INTEGER NOT NULL, " +
+                "score INTEGER NOT NULL, " +
+                "yeti_killed INTEGER NOT NULL, " +
+                "missed_shots INTEGER DEFAULT 0, " + // Kolom baru
+                "remaining_bullets INTEGER DEFAULT 0, " + // Kolom baru
+                "difficulty TEXT NOT NULL, " +
+                "mode TEXT NOT NULL, " +
+                "played_at DATETIME DEFAULT CURRENT_TIMESTAMP, " +
+                "FOREIGN KEY (player_id) REFERENCES players(id));");
+
             stmt.execute("CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), music_volume INTEGER DEFAULT 50, last_difficulty TEXT DEFAULT 'EASY', last_mode TEXT DEFAULT 'OFFLINE');");
             stmt.execute("INSERT OR IGNORE INTO settings (id, music_volume, last_difficulty, last_mode) VALUES (1, 50, 'EASY', 'OFFLINE');");
         } catch (SQLException e) {
@@ -29,31 +39,35 @@ public class SQLiteManager {
         }
     }
 
-    public static DefaultTableModel getLeaderboardData(String difficulty) {
-        String[] columnNames = {"Username", "High Score", "Kills", "Missed"};
-        DefaultTableModel model = new DefaultTableModel(columnNames, 0);
-        
-        // Query: Ambil MAX score per username untuk difficulty tertentu
-        String sql = "SELECT p.username, MAX(s.score) as top_score, s.yeti_killed, s.missed_shots " +
+    // Method baru untuk mengambil data leaderboard dalam bentuk teks terformat
+    public static String getLeaderboardAsText(String difficulty) {
+        StringBuilder sb = new StringBuilder();
+        // Header Kolom
+        sb.append(String.format("%-3s %-12s %-8s %-6s %-4s\n", "RK", "NAME", "SCORE", "MISS", "BLT"));
+        sb.append("------------------------------------------\n");
+
+        String sql = "SELECT p.username, s.score, s.missed_shots, s.remaining_bullets " +
                     "FROM players p " +
                     "JOIN scores s ON p.id = s.player_id " +
                     "WHERE s.difficulty = ? " +
-                    "GROUP BY p.username " +
-                    "ORDER BY top_score DESC";
+                    "ORDER BY s.score DESC LIMIT 7";
 
         try (Connection conn = connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, difficulty);
             ResultSet rs = ps.executeQuery();
+            int rank = 1;
             while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getString("username"),
-                    rs.getInt("top_score"),
-                    rs.getInt("yeti_killed"),
-                    rs.getInt("missed_shots") // Tambahkan kolom missed
-                });
+                sb.append(String.format("%-3d | %-12s | %-8d | %-5d | %-4d |\n", 
+                    rank++, 
+                    truncateName(rs.getString("username"), 12), // Potong jika nama kepanjangan
+                    rs.getInt("score"), 
+                    rs.getInt("missed_shots"), 
+                    rs.getInt("remaining_bullets")));
             }
-        } catch (SQLException e) { e.printStackTrace(); }
-        return model;
+        } catch (SQLException e) { 
+            return "Gagal memuat skor."; 
+        }
+        return sb.toString();
     }
 
     public static void saveScore(String username, int score, int killed, int missed, int bullets, String diff, String mode) {
@@ -115,5 +129,10 @@ public class SQLiteManager {
             e.printStackTrace();
         }
         return new GameSettings();
+    }
+
+    private static String truncateName(String name, int max) {
+        if (name.length() <= max) return name;
+        return name.substring(0, max - 2) + "..";
     }
 }

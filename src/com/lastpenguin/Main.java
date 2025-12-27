@@ -27,6 +27,7 @@ public class Main {
 
     public static void showMenu() {
         soundManager.playMusic("bgm_main.wav"); // Putar musik menu
+        GameSettings settings = SQLiteManager.loadSettings();
         menuView = new MenuPanel(
             e -> {
                 if (menuView.getUsername().isEmpty()) {
@@ -37,6 +38,7 @@ public class Main {
             },
             e -> showSettings(false, () -> showMenu())
         );
+        menuView.refreshLeaderboard(settings.getDifficulty());
         window.setView(menuView);
     }
 
