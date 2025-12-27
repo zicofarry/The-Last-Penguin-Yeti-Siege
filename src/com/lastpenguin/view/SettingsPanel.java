@@ -117,13 +117,13 @@ public class SettingsPanel extends JPanel {
         add(btnKeyS3);
 
         // --- BACK BUTTON ---
-        JButton btnBack = new JButton("BACK");
+        JButton btnBack = new JButton("");
         btnBack.setFont(customFont.deriveFont(Font.BOLD, 22f));
         btnBack.setForeground(Color.WHITE);
         btnBack.setContentAreaFilled(false);
         btnBack.setBorderPainted(false);
         btnBack.setFocusPainted(false);
-        btnBack.setBounds(325, 510, 150, 45);
+        btnBack.setBounds(318, 500, 150, 45);
         btnBack.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnBack.addActionListener(e -> {
             soundManager.playEffect("sfx_click.wav");
