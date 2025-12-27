@@ -1,188 +1,234 @@
 package com.lastpenguin.view;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import com.lastpenguin.model.SQLiteManager;
 
 public class MenuPanel extends JPanel {
 
     private Image backgroundImage;
     private JTextField nameInputField;
-    private JTextArea leaderboardArea;
+    private JTable leaderboardTable;
+    private JScrollPane scrollPane;
+    private DefaultTableModel tableModel;
     private JButton playButton, settingsButton, exitButton;
     private Font customFont;
     private Sound SoundManager = new Sound();
 
-    // PERBAIKAN 1a: Simpan listener yang diterima dari Main
     private ActionListener playListener;
     private ActionListener settingsListener;
 
-    // PERBAIKAN 1b: Constructor diubah untuk menerima listener dari Main.java
+    // Warna tombol cokelat gelap agar kontras dengan papan kayu
+    private final Color buttonNormalColor = new Color(80, 50, 30); 
+    private final Color buttonHoverColor = new Color(255, 255, 255); 
+    
+    // Variabel untuk melacak baris yang sedang di-hover
+    private int hoveredRow = -1;
+
     public MenuPanel(ActionListener playListener, ActionListener settingsListener) {
         this.playListener = playListener;
         this.settingsListener = settingsListener;
-
-        // PENTING: Gunakan null layout untuk penempatan pixel presisi di atas gambar
         this.setLayout(null);
 
         loadResources();
         initComponents();
-
-        refreshLeaderboard("EASY");
     }
 
     private void loadResources() {
-        // 1. Load Gambar Background
         try {
-            // Pastikan path ini benar
             backgroundImage = new javax.swing.ImageIcon("res/assets/images/ui/main_menu_bg.png").getImage();
         } catch (Exception e) {
             System.err.println("Gagal load background menu: " + e.getMessage());
         }
 
-        // 2. Load Font Kustom
         try {
             customFont = Font.createFont(Font.TRUETYPE_FONT, new File("res/assets/fonts/icy_font.ttf")).deriveFont(24f);
             GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
             ge.registerFont(customFont);
         } catch (IOException | FontFormatException e) {
-            System.err.println("Gagal load font, pakai default Arial. Pastikan file .ttf ada di res/assets/fonts/");
-            customFont = new Font("Arial", Font.BOLD, 24);
+            customFont = new Font("Arial", Font.BOLD, 20);
         }
     }
 
     private void initComponents() {
-        // Warna untuk teks agar terlihat seperti di atas kayu (cokelat tua)
         Color woodTextColor = new Color(60, 40, 20);
 
-        // --- A. SETUP INPUT NAMA (Papan Atas) ---
-        nameInputField = new JTextField("Player Name");
-        // TENTUKAN KOORDINAT DISINI: setBounds(x, y, width, height)
-        // NANTI HARUS DISESUAIKAN LAGI AGAR PAS DENGAN GAMBAR
-        nameInputField.setBounds(240, 160, 300, 30);
-
-        // Styling
+        // --- A. INPUT NAMA (Default Kosong) ---
+        nameInputField = new JTextField(""); 
+        nameInputField.setBounds(240, 160, 300, 35);
         nameInputField.setOpaque(false);
         nameInputField.setBorder(null);
-        if (customFont != null) {
-             nameInputField.setFont(customFont.deriveFont(Font.BOLD, 28f));
-        }
+        if (customFont != null) nameInputField.setFont(customFont.deriveFont(Font.BOLD, 28f));
         nameInputField.setForeground(woodTextColor);
         nameInputField.setHorizontalAlignment(JTextField.CENTER);
-        nameInputField.getCaret().setVisible(true);
+        nameInputField.setCaretColor(woodTextColor); 
 
-        // Efek Suara Keyboard
         nameInputField.addKeyListener(new KeyAdapter() {
             @Override
-            public void keyTyped(KeyEvent e) {
-                // PERBAIKAN 3: Baris ini dikomen dulu karena SoundManager belum siap
-                SoundManager.playEffect("sfx_keyboard.wav");
-                 // System.out.println("Bunyi: Tik! (Placeholder)"); // Debug
-            }
+            public void keyTyped(KeyEvent e) { SoundManager.playEffect("sfx_keyboard.wav"); }
         });
         this.add(nameInputField);
 
+        // --- B. TABEL LEADERBOARD ---
+        String[] columnNames = {"USERNAME", "SCORE", "MISS", "BULLET"};
+        tableModel = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
 
-        // --- B. SETUP LEADERBOARD (Papan Tengah Besar) ---
-        leaderboardArea = new JTextArea();
-        // TENTUKAN KOORDINAT DISINI NANTI:
-        leaderboardArea.setBorder(BorderFactory.createLineBorder(Color.RED));
-        // setBounds(x, y, lebar, tinggi)
-        leaderboardArea.setBounds(200, 240, 440, 250);
+        leaderboardTable = new JTable(tableModel);
+        leaderboardTable.setOpaque(false);
+        leaderboardTable.setShowGrid(true); 
+        leaderboardTable.setGridColor(new Color(60, 40, 20, 100)); 
+        leaderboardTable.setIntercellSpacing(new Dimension(1, 1)); 
+        leaderboardTable.setRowHeight(30);
+        leaderboardTable.setForeground(woodTextColor);
+        if (customFont != null) leaderboardTable.setFont(customFont.deriveFont(16f));
 
-        // Styling
-        leaderboardArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 18));
-        leaderboardArea.setOpaque(false);
-        leaderboardArea.setBorder(null);
-        if (customFont != null) {
-            leaderboardArea.setFont(customFont.deriveFont(20f));
+        // --- LOGIKA HOVER & KLIK TABEL ---
+        leaderboardTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int row = leaderboardTable.getSelectedRow();
+                if (row != -1) {
+                    String selectedName = leaderboardTable.getValueAt(row, 0).toString();
+                    nameInputField.setText(selectedName);
+                    SoundManager.playEffect("sfx_click.wav"); 
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                hoveredRow = -1;
+                leaderboardTable.repaint();
+            }
+        });
+
+        leaderboardTable.addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int row = leaderboardTable.rowAtPoint(e.getPoint());
+                if (row != hoveredRow) {
+                    hoveredRow = row;
+                    leaderboardTable.repaint();
+                }
+            }
+        });
+
+        // Custom Renderer untuk Efek Hover (Highlight)
+        DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                ((JLabel)c).setHorizontalAlignment(JLabel.CENTER);
+                
+                // Jika baris sedang di-hover, berikan warna highlight putih transparan
+                if (row == hoveredRow) {
+                    c.setBackground(new Color(255, 255, 255, 50)); 
+                } else {
+                    c.setBackground(new Color(0, 0, 0, 0)); 
+                }
+
+                if (c instanceof JComponent) {
+                    ((JComponent) c).setBorder(null);
+                }
+                return c;
+            }
+        };
+        
+        for (int i = 0; i < leaderboardTable.getColumnCount(); i++) {
+            leaderboardTable.getColumnModel().getColumn(i).setCellRenderer(cellRenderer);
         }
-        leaderboardArea.setForeground(woodTextColor);
-        leaderboardArea.setEditable(false);
-        leaderboardArea.setLineWrap(true);
-        leaderboardArea.setWrapStyleWord(true);
-        leaderboardArea.setMargin(new Insets(20, 10, 10, 10));
-        leaderboardArea.setText("TOP SCORES:\n(Loading...)");
-        this.add(leaderboardArea);
 
+        leaderboardTable.getTableHeader().setOpaque(false);
+        leaderboardTable.getTableHeader().setBackground(new Color(0,0,0,0));
+        leaderboardTable.getTableHeader().setForeground(woodTextColor);
+        if (customFont != null) leaderboardTable.getTableHeader().setFont(customFont.deriveFont(Font.BOLD, 16f));
+        leaderboardTable.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, woodTextColor));
 
-        // --- C. SETUP TOMBOL (Papan Bawah) ---
+        scrollPane = new JScrollPane(leaderboardTable);
+        scrollPane.setBounds(191, 230, 403, 201); 
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBorder(null);
+        this.add(scrollPane);
+
+        // --- C. TOMBOL (Play, Settings, Exit) ---
         playButton = createStyledButton("PLAY");
         settingsButton = createStyledButton("SETTINGS");
         exitButton = createStyledButton("EXIT");
 
-        // TENTUKAN KOORDINAT TOMBOL NANTI:
-        int buttonY = 480;
-        int buttonWidth = 150;
-        int buttonHeight = 50;
+        playButton.setBounds(190, 480, 150, 50);
+        settingsButton.setBounds(330, 480, 150, 50);
+        exitButton.setBounds(475, 480, 150, 50);
 
-        playButton.setBounds(190, buttonY, buttonWidth, buttonHeight);
-        settingsButton.setBounds(330, buttonY, buttonWidth, buttonHeight);
-        exitButton.setBounds(475, buttonY, buttonWidth, buttonHeight);
+        // Menambahkan Sound Effect saat tombol diklik
+        playButton.addActionListener(e -> {
+            SoundManager.playEffect("sfx_click.wav");
+            playListener.actionPerformed(e);
+        });
 
-        // PERBAIKAN 1c: Gunakan listener yang dikirim dari Main.java
-        playButton.addActionListener(this.playListener);
-        settingsButton.addActionListener(this.settingsListener);
+        settingsButton.addActionListener(e -> {
+            SoundManager.playEffect("sfx_click.wav");
+            settingsListener.actionPerformed(e);
+        });
 
-        // Tombol exit bisa langsung ditangani di sini
-        exitButton.addActionListener(e -> System.exit(0));
+        exitButton.addActionListener(e -> {
+            SoundManager.playEffect("sfx_click.wav");
+            // Beri sedikit jeda agar suara terdengar sebelum exit
+            Timer timer = new Timer(200, ex -> System.exit(0));
+            timer.setRepeats(false);
+            timer.start();
+        });
 
-
-        this.add(playButton);
-        this.add(settingsButton);
+        this.add(playButton); 
+        this.add(settingsButton); 
         this.add(exitButton);
     }
 
-
-    // Helper method untuk membuat tombol
     private JButton createStyledButton(String text) {
         JButton btn = new JButton(text);
-        if (customFont != null) {
-            btn.setFont(customFont.deriveFont(Font.BOLD, 22f));
-        }
-        btn.setForeground(new Color(220, 200, 180));
+        if (customFont != null) btn.setFont(customFont.deriveFont(Font.BOLD, 22f));
+        btn.setForeground(buttonNormalColor); 
         btn.setContentAreaFilled(false);
         btn.setBorderPainted(false);
         btn.setFocusPainted(false);
         btn.setOpaque(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        
         btn.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseEntered(MouseEvent e) { btn.setForeground(Color.WHITE); }
+            public void mouseEntered(MouseEvent e) { btn.setForeground(buttonHoverColor); }
             @Override
-            public void mouseExited(MouseEvent e) { btn.setForeground(new Color(220, 200, 180)); }
+            public void mouseExited(MouseEvent e) { btn.setForeground(buttonNormalColor); }
         });
         return btn;
     }
 
-    // PERBAIKAN 2: Ubah nama method jadi getUsername() agar sesuai dengan Main.java
-    public String getUsername() {
-        return nameInputField.getText();
-    }
-
-    // Method untuk update leaderboard dari luar (nanti dipakai Presenter)
-    public void updateLeaderboard(String text) {
-        leaderboardArea.setText(text);
-    }
+    public String getUsername() { return nameInputField.getText(); }
 
     public void refreshLeaderboard(String difficulty) {
-        String data = SQLiteManager.getLeaderboardAsText(difficulty);
-        updateLeaderboard(data);
+        tableModel.setRowCount(0);
+        List<Object[]> dataList = SQLiteManager.getLeaderboardData(difficulty);
+        
+        for (Object[] row : dataList) {
+            tableModel.addRow(new Object[]{
+                row[0], row[1], row[2], row[3] 
+            });
+        }
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         if (backgroundImage != null) {
-            g.drawImage(backgroundImage, 0, 0, this.getWidth(), this.getHeight(), this);
+            g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
         }
     }
-
 }
