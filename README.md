@@ -114,7 +114,6 @@ Kompilasi seluruh kode sumber ke direktori `bin` dengan menyertakan pustaka yang
 
 ```bash
 javac -d bin -cp "lib/sqlite-jdbc-3.51.1.0.jar;lib/mysql-connector-j-9.5.0.jar" src/com/lastpenguin/Main.java src/com/lastpenguin/model/*.java src/com/lastpenguin/view/*.java src/com/lastpenguin/presenter/*.java
-
 ```
 
 ### 6.2 Eksekusi
@@ -123,7 +122,6 @@ Jalankan aplikasi dengan menyertakan direktori `bin`, folder aset `res`, dan pus
 
 ```bash
 java -cp "bin;res;lib/sqlite-jdbc-3.51.1.0.jar;lib/mysql-connector-j-9.5.0.jar" com.lastpenguin.Main
-
 ```
 
 *(Gunakan titik dua `:` sebagai pemisah path jika Anda menggunakan sistem operasi berbasis Linux atau macOS).*
