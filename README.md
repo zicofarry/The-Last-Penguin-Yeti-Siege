@@ -30,7 +30,6 @@ Berikut adalah representasi struktur direktori proyek:
 The-Last-Penguin-Yeti-Siege/
 ├── antarctica_mysql.sql
 ├── antarctica_sqlite.sql
-├── compile.txt
 ├── data/
 │   └── antarctica.db
 ├── lib/
