@@ -39,8 +39,9 @@ public class Main {
      * and refreshes the leaderboard based on the current connection mode.
      */
     public static void showMenu() {
-        soundManager.playMusic("bgm_main.wav");
         currentSettings = SQLiteManager.loadSettings();
+        soundManager.setSettings(currentSettings);
+        soundManager.playMusic("bgm_main.wav");
         
         menuView = new MenuPanel(
             e -> {
