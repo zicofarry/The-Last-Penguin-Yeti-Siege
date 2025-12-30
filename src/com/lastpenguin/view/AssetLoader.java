@@ -1,8 +1,3 @@
-/**
- * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
- * Email: mhmmdzmslm36@gmail.com
- * GitHub: https://github.com/zicofarry
- */
 package com.lastpenguin.view;
 
 import javax.imageio.ImageIO;
@@ -13,38 +8,39 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Utility class for loading and caching game assets such as images and sprites.
- * This ensures that resources are only loaded once into memory for better performance.
- * * @author Muhammad 'Azmi Salam
- * @version 1.0
- * @since December 2025
+ * Utility for resource management and asset retrieval.
+ * Provides streamlined methods for loading images and sprite arrays 
+ * from the local resource path.
  */
 public class AssetLoader {
 
-    // Cache to store loaded images
     private static final String IMAGE_PATH = "/assets/images/";
     private static final String SOUND_PATH = "/assets/sounds/";
 
     /**
-     * Loads an image from the resources folder.
-     * @param fileName The name of the file inside /res/assets/images/
-     * @return The loaded BufferedImage or null if failed.
+     * Loads a single image file from the embedded resources.
+     * @param fileName The relative path of the file within the asset directory.
+     * @return The loaded BufferedImage, or null if retrieval fails.
      */
     public static BufferedImage loadImage(String fileName) {
         try {
-            // Mengambil resource menggunakan ClassLoader agar kompatibel saat dibungkus ke .jar
             InputStream is = AssetLoader.class.getResourceAsStream(IMAGE_PATH + fileName);
             if (is == null) {
-                System.err.println("Gagal menemukan gambar: " + IMAGE_PATH + fileName);
+                System.err.println("Resource not found: " + IMAGE_PATH + fileName);
                 return null;
             }
             return ImageIO.read(is);
         } catch (IOException e) {
-            System.err.println("Eror saat membaca gambar " + fileName + ": " + e.getMessage());
+            System.err.println("Error reading image " + fileName + ": " + e.getMessage());
             return null;
         }
     }
-    // Tambahkan di AssetLoader.java
+
+    /**
+     * Aggregates and loads all animation frames for the Yeti entity.
+     * Uses a fallback mechanism to prevent visual errors if specific frames are missing.
+     * @return An array of BufferedImage containing directional and walking frames.
+     */
     public static BufferedImage[] loadYetiSprites() {
         BufferedImage[] sprites = new BufferedImage[12];
         String[] directions = {"front", "left", "right", "back"};
@@ -56,7 +52,6 @@ public class AssetLoader {
                 String fileName = "sprites/yeti_" + dir + "_" + step + ".png";
                 BufferedImage img = loadImage(fileName);
                 
-                // Fallback: Jika gambar tidak ditemukan, gunakan yeti_front_balanced.png (no. 2)
                 if (img == null) {
                     img = loadImage("sprites/yeti_front_balanced.png");
                 }
@@ -69,7 +64,7 @@ public class AssetLoader {
     }
 
     /**
-     * (Placeholder) Untuk memuat input stream suara dari res/assets/sounds/
+     * Retrieves an input stream for audio files.
      */
     public static InputStream getSoundStream(String fileName) {
         return AssetLoader.class.getResourceAsStream(SOUND_PATH + fileName);

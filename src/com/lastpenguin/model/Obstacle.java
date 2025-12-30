@@ -1,17 +1,10 @@
-/**
- * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
- * Email: mhmmdzmslm36@gmail.com
- * GitHub: https://github.com/zicofarry
- */
 package com.lastpenguin.model;
 
 /**
- * Merepresentasikan objek lingkungan statis seperti batu es atau tembok salju.
- * Obstacle menghalangi pergerakan entitas dan menghancurkan proyektil.
- * Versi ini mendukung sistem HP di mana rintangan dapat hancur dan berubah bentuk.
- * * @author Muhammad 'Azmi Salam
- * @version 1.1
- * @since December 2025
+ * Represents static or destructible environmental objects within the game arena.
+ * Obstacles serve as barriers that impede entity movement and intercept projectiles.
+ * This implementation supports a durability system (HP) for destructible objects 
+ * and duration-based logic for temporary environmental hazards.
  */
 public class Obstacle {
     private int x, y;
@@ -19,12 +12,16 @@ public class Obstacle {
     private boolean isHole = false;
     private int duration = -1;
     
-    // Fitur baru: Durabilitas rintangan
+    // Durability features for destructible obstacles
     private int hp = -1; 
     private boolean destructible = false;
 
     /**
-     * Konstruktor standar untuk obstacle statis (indestructible).
+     * Standard constructor for permanent, indestructible obstacles.
+     * @param x The horizontal position of the obstacle.
+     * @param y The vertical position of the obstacle.
+     * @param width The width of the obstacle's collision area.
+     * @param height The height of the obstacle's collision area.
      */
     public Obstacle(int x, int y, int width, int height) {
         this.x = x; 
@@ -34,8 +31,8 @@ public class Obstacle {
     }
 
     /**
-     * Konstruktor baru untuk rintangan yang bisa hancur (Batu/Duri).
-     * @param initialHp HP awal (30 untuk Batu, 15 untuk Duri).
+     * Constructor for destructible obstacles with health points (e.g., Ice Rocks or Spikes).
+     * @param initialHp The initial structural integrity points.
      */
     public Obstacle(int x, int y, int width, int height, int initialHp) {
         this(x, y, width, height);
@@ -44,7 +41,9 @@ public class Obstacle {
     }
 
     /**
-     * Konstruktor untuk lubang (hasil skill Meteor).
+     * Constructor for hazardous terrain zones (e.g., holes created by Meteor strikes).
+     * @param isHole Flag to identify the obstacle as a hazard zone.
+     * @param duration The lifespan of the hazard measured in game frames.
      */
     public Obstacle(int x, int y, int width, int height, boolean isHole, int duration) {
         this(x, y, width, height);
@@ -53,7 +52,8 @@ public class Obstacle {
     }
 
     /**
-     * Mengurangi HP rintangan saat terkena proyektil.
+     * Decrements the structural integrity of the obstacle when struck by a projectile.
+     * Only affects obstacles marked as destructible.
      */
     public void takeDamage() {
         if (destructible && hp > 0) {
@@ -62,27 +62,31 @@ public class Obstacle {
     }
 
     /**
-     * Update durasi untuk rintangan tipe lubang.
+     * Updates the obstacle's state on each game tick.
+     * Primarily manages the countdown for temporary hazard durations.
      */
     public void update() { 
         if (duration > 0) duration--; 
     }
 
     /**
-     * Mengecek apakah lubang sudah waktunya menghilang.
+     * Determines if a temporary hazard has reached the end of its lifespan.
+     * @return True if the object is a hole and its duration has elapsed.
      */
     public boolean isExpired() { 
         return isHole && duration == 0; 
     }
 
     /**
-     * Mengecek apakah rintangan es sudah hancur sepenuhnya.
+     * Determines if a destructible obstacle has been fully broken.
+     * @return True if the obstacle is destructible and its health points are depleted.
      */
     public boolean isDestroyed() {
         return destructible && hp <= 0;
     }
 
-    // Getters
+    // --- Getter Methods for Rendering and Collision Logic ---
+
     public boolean isHole() { return isHole; }
     public int getX() { return x; }
     public int getY() { return y; }

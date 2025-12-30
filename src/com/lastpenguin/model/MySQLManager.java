@@ -4,40 +4,47 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Manages remote database interactions using MySQL.
+ * Facilitates player data synchronization, global high-score tracking, 
+ * and server availability checks for the Online game mode.
+ */
 public class MySQLManager {
-    // Konfigurasi koneksi
+    // Database connection configurations
     private static final String URL = "jdbc:mysql://localhost:3306/antarctica";
     private static final String USER = "root"; 
     private static final String PASSWORD = ""; 
 
+    /**
+     * Establishes a connection to the MySQL server.
+     */
     public static Connection connect() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
     /**
-     * Logika: Mengambil data awal untuk memulai permainan
-     * Bullets = Diambil dari record terakhir (permainan terakhir)
-     * Score & Missed = Diambil dari record dengan score tertinggi (Highscore)
-     * Default untuk player baru: Score 0, Missed 0, Bullets 0
+     * Retrieves the initial player state to begin a game session.
+     * Ammunition is fetched from the last recorded session, while score 
+     * and missed shots are retrieved from the historical high-score record.
      */
     public static Object[] getInitialPlayerData(String username, String difficulty) {
-        // Data default: [score, missed, bullets]
+        // Default values: [score, missed, bullets]
         Object[] data = new Object[]{0, 0, 0}; 
 
         String selectPlayerSql = "SELECT id FROM players WHERE username = ?";
         
-        // Query untuk ambil peluru dari sesi TERAKHIR (played_at terbaru)
+        // Query to retrieve ammunition from the most recent session
         String lastSessionSql = "SELECT remaining_bullets FROM scores " +
                                 "WHERE player_id = ? AND difficulty = ? " +
                                 "ORDER BY played_at DESC LIMIT 1";
         
-        // Query untuk ambil highscore dan missed-nya (score tertinggi)
+        // Query to retrieve the highest score and its associated missed shots
         String highscoreSql = "SELECT score, missed_shots FROM scores " +
                               "WHERE player_id = ? AND difficulty = ? " +
                               "ORDER BY score DESC, played_at DESC LIMIT 1";
 
         try (Connection conn = connect()) {
-            // 1. Cari ID Player berdasarkan username
+            // 1. Identify the Player ID based on the provided username
             int playerId = -1;
             try (PreparedStatement ps = conn.prepareStatement(selectPlayerSql)) {
                 ps.setString(1, username);
@@ -45,9 +52,9 @@ public class MySQLManager {
                 if (rs.next()) playerId = rs.getInt("id");
             }
 
-            // 2. Jika player ditemukan di database, tarik datanya
+            // 2. If the player exists, populate the data array from existing records
             if (playerId != -1) {
-                // Ambil Peluru Terakhir
+                // Fetch ammunition count from the last session
                 try (PreparedStatement ps = conn.prepareStatement(lastSessionSql)) {
                     ps.setInt(1, playerId);
                     ps.setString(2, difficulty);
@@ -57,7 +64,7 @@ public class MySQLManager {
                     }
                 }
 
-                // Ambil Highscore & Missed
+                // Fetch high-score and corresponding missed shot statistics
                 try (PreparedStatement ps = conn.prepareStatement(highscoreSql)) {
                     ps.setInt(1, playerId);
                     ps.setString(2, difficulty);
@@ -69,13 +76,14 @@ public class MySQLManager {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("[ONLINE] Gagal mengambil data awal: " + e.getMessage());
+            System.err.println("[ONLINE] Failed to retrieve initial player data: " + e.getMessage());
         }
         return data;
     }
 
     /**
-     * Menyimpan skor ke database MySQL
+     * Persists the current game session results to the remote MySQL database.
+     * Ensures the player is registered in the database before inserting session records.
      */
     public static void saveScoreOnline(String username, int score, int killed, int missed, int bullets, String diff) {
         String insertPlayerSql = "INSERT IGNORE INTO players (username) VALUES (?)";
@@ -84,13 +92,13 @@ public class MySQLManager {
                                 "VALUES (?, ?, ?, ?, ?, ?, 'ONLINE')";
 
         try (Connection conn = connect()) {
-            // Pastikan player terdaftar
+            // Ensure the player is registered in the system
             try (PreparedStatement ps = conn.prepareStatement(insertPlayerSql)) {
                 ps.setString(1, username);
                 ps.executeUpdate();
             }
 
-            // Ambil ID player
+            // Retrieve the verified Player ID
             int playerId = -1;
             try (PreparedStatement ps = conn.prepareStatement(selectPlayerSql)) {
                 ps.setString(1, username);
@@ -98,7 +106,7 @@ public class MySQLManager {
                 if (rs.next()) playerId = rs.getInt("id");
             }
 
-            // Simpan Score
+            // Execute the score insertion if player identity is confirmed
             if (playerId != -1) {
                 try (PreparedStatement ps = conn.prepareStatement(insertScoreSql)) {
                     ps.setInt(1, playerId);
@@ -108,22 +116,23 @@ public class MySQLManager {
                     ps.setInt(5, killed);
                     ps.setString(6, diff);
                     ps.executeUpdate();
-                    System.out.println("[ONLINE] Skor berhasil diunggah ke server!");
+                    System.out.println("[ONLINE] Score successfully uploaded to the server.");
                 }
             }
         } catch (SQLException e) {
-            System.err.println("[ONLINE] Gagal menyimpan skor: " + e.getMessage());
+            System.err.println("[ONLINE] Failed to save session score: " + e.getMessage());
         }
     }
 
     /**
-     * Mengambil Leaderboard Global
-     * Menampilkan Skor Tertinggi (Highscore) tapi Peluru dari Sesi Terakhir
+     * Retrieves the Global Leaderboard entries.
+     * Aggregates data to display the highest historical score alongside the 
+     * ammunition count from the player's most recent session using window functions.
      */
     public static List<Object[]> getGlobalLeaderboard(String difficulty) {
         List<Object[]> data = new ArrayList<>();
         
-        // Query menggunakan ROW_NUMBER() untuk mendapatkan baris terbaik dan baris terbaru secara bersamaan
+        // Complex query utilizing ROW_NUMBER() to synchronize high-scores and latest session data
         String sql = "SELECT p.username, hs.score, hs.missed_shots, ls.remaining_bullets " +
                      "FROM players p " +
                      "JOIN (" +
@@ -152,13 +161,13 @@ public class MySQLManager {
                 });
             }
         } catch (SQLException e) {
-            System.err.println("[ONLINE] Gagal mengambil global leaderboard: " + e.getMessage());
+            System.err.println("[ONLINE] Failed to retrieve global leaderboard: " + e.getMessage());
         }
         return data;
     }
 
     /**
-     * Cek koneksi server
+     * Validates if the remote database server is accessible.
      */
     public static boolean isServerAvailable() {
         try (Connection conn = connect()) {

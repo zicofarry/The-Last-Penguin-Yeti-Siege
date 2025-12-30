@@ -1,26 +1,16 @@
-/**
- * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
- * Email: mhmmdzmslm36@gmail.com
- * GitHub: https://github.com/zicofarry
- */
 package com.lastpenguin.model;
 import java.awt.event.KeyEvent;
 
 /**
- * Holds global game configurations and user preferences.
- * This model is used to sync data between the UI and the SQLite database.
- * * @author Muhammad 'Azmi Salam
- * @version 1.0
- * @since December 2025
+ * Data transfer object that encapsulates global game configurations, 
+ * control preferences, and audio settings.
  */
 public class GameSettings {
     
-    // Difficulty Constants
     public static final String EASY = "EASY";
     public static final String MEDIUM = "MEDIUM";
     public static final String HARD = "HARD";
 
-    // Mode Constants
     public static final String OFFLINE = "OFFLINE";
     public static final String ONLINE = "ONLINE";
 
@@ -35,7 +25,7 @@ public class GameSettings {
     private String mode;
 
     /**
-     * Default constructor initializing with standard values.
+     * Default constructor for initial application startup.
      */
     public GameSettings() {
         this.musicVolume = 50;
@@ -45,7 +35,7 @@ public class GameSettings {
     }
 
     /**
-     * Full constructor for loading from database.
+     * Parameterized constructor used when loading existing settings from the database.
      */
     public GameSettings(int musicVolume, int sfxVolume, String difficulty, String mode) {
         this.musicVolume = musicVolume;
@@ -54,7 +44,6 @@ public class GameSettings {
         this.mode = mode;
     }
 
-    // Getters and Setters
     public int getMusicVolume() { return musicVolume; }
     public void setMusicVolume(int musicVolume) { this.musicVolume = musicVolume; }
 
