@@ -1,3 +1,11 @@
+/*
+Saya Muhammad 'Azmi Salam dengan NIM 2406010
+mengerjakan Tugas Masa Depan dalam mata kuliah
+Desain Pemrograman Berorientasi Objek untuk keberkahanNya
+maka saya tidak melakukan kecurangan seperti yang telah
+dispesifikasikan. Aamiin.
+*/
+
 package com.lastpenguin;
 
 import com.lastpenguin.model.*;

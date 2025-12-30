@@ -80,6 +80,15 @@ Setiap komponen dalam proyek ini menerapkan prinsip dasar Pemrograman Berorienta
 ### 3.2 Paket `com.lastpenguin.presenter` (Logika Bisnis)
 
 * **GamePresenter.java**: Menerapkan **Komposisi** dengan mengelola kumpulan objek (`List<Yeti>`, `List<Projectile>`, `List<Obstacle>`) dan mengoordinasikan interaksi antar objek tersebut dalam satu *game loop*.
+* **InputHandler.java**: Memisahkan logika penangkapan input (Keyboard & Mouse) dari logika pergerakan, sehingga kontrol permainan bersifat modular dan mudah diubah.
+
+### 3.3 Paket `com.lastpenguin.view` (Antarmuka Pengguna)
+
+* **AssetLoader.java**: Menerapkan prinsip **Singleton-like Utility** untuk memastikan aset (gambar, font) dimuat secara efisien ke dalam memori hanya satu kali, mencegah pemborosan sumber daya.
+* **GamePanel.java**: Berperan sebagai kanvas utama yang menerapkan **Pemisahan Tanggung Jawab (Separation of Concerns)**; fokus hanya pada proses rendering visual dari data yang diberikan oleh Presenter.
+* **HUD.java**: Mengenkapsulasi logika tampilan informasi permainan (skor, amunisi, bar kesehatan) agar tidak bercampur dengan logika rendering dunia permainan utama.
+* **Sound.java**: Mengelola sistem audio secara mandiri melalui **Abstraksi** kontrol suara (play, stop, volume), sehingga perubahan pada sistem audio tidak memengaruhi logika permainan lainnya.
+* **MenuPanel & SettingsPanel**: Menggunakan **Modularitas UI** dengan membagi layar aplikasi menjadi beberapa panel yang dapat digonta-ganti dengan mudah di dalam satu `GameWindow`.
 
 
 ## 4. Alur Kerja Aplikasi (Workflow)
