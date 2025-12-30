@@ -91,11 +91,12 @@ Aplikasi beroperasi melalui urutan proses berikut:
 ## 5. Fitur Utama
 
 * **Sistem High Score & Leaderboard**:
-* **Leaderboard Lokal**: Menyimpan riwayat skor tertinggi berdasarkan tingkat kesulitan di SQLite lokal.
-* **Leaderboard Global**: Menampilkan peringkat 50 besar pemain dari seluruh dunia melalui server MySQL.
-
-
-* **Kemampuan Khusus (Skills)**: Termasuk *Giant Snowball* (Skill 1), *Meteor Strike* (Skill 2), dan *Invisible Mode* (Skill 3).
+  1. Leaderboard Lokal: Menyimpan riwayat skor tertinggi berdasarkan tingkat kesulitan di SQLite lokal.
+  2. Leaderboard Global: Menampilkan peringkat 50 besar pemain dari seluruh dunia melalui server MySQL.
+* **SistemKemampuan Khusus (Skills)**:
+  1. Skill 1 (Giant Snowball): Tembakan berukuran besar dengan kemampuan menembus musuh.
+  2. Skill 2 (Meteor Strike): Serangan area (AoE) yang menghancurkan musuh dan menciptakan rintangan lingkungan baru
+  3. Skill 3 (Invisible): Mode transparan yang membuat musuh kehilangan jejak pemain.
 * **Manajemen Amunisi Persisten**: Amunisi yang tersisa dari sesi sebelumnya dapat dibawa kembali ke sesi baru (tergantung pada data sesi terakhir di basis data).
 * **Kontrol Hibrida**: Mendukung penggunaan Mouse untuk membidik dan menembak atau sepenuhnya menggunakan Keyboard.
 
