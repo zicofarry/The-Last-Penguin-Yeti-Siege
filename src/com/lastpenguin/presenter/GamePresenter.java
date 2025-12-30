@@ -7,14 +7,19 @@ import javax.swing.Timer;
 import java.awt.Rectangle;
 import com.lastpenguin.view.Sound;
 
+/**
+ * Acts as the Controller in the MVP pattern.
+ * Manages the core game loop, entity interactions, collision detection, 
+ * and skill execution logic.
+ */
 public class GamePresenter {
     private Player player;
     private GameSettings settings;
     private List<Yeti> yetis = new ArrayList<>();
     private List<Projectile> projectiles = new ArrayList<>();
     private List<Obstacle> obstacles = new ArrayList<>();
-    private List<Meteor> activeMeteors = new ArrayList<>(); // List untuk meteor yang sedang jatuh
-    private boolean isTargetingMeteor = false; // Mode membidik meteor
+    private List<Meteor> activeMeteors = new ArrayList<>(); 
+    private boolean isTargetingMeteor = false; 
     private InputHandler input;
     private GamePanel view;
     private Random rand = new Random();
@@ -32,7 +37,7 @@ public class GamePresenter {
         this.settings = settings;
         this.input = new InputHandler();
         
-        // Tambahkan Listener ke view
+        // Attach input listeners to the view component
         this.view.addKeyListener(input);
         this.view.addMouseListener(input);
         this.view.addMouseMotionListener(input);
@@ -43,6 +48,10 @@ public class GamePresenter {
         this.soundManager.setSettings(settings);
     }
 
+    /**
+     * Generates a random obstacle while ensuring it does not spawn 
+     * within the player's immediate starting vicinity.
+     */
     private void spawnOneRandomObstacle() {
         Rectangle playerSafeZone = new Rectangle(player.getX() - 50, player.getY() - 50, 150, 150);
         int ox, oy, initialHp;
@@ -64,11 +73,16 @@ public class GamePresenter {
         }
     }
 
+    /**
+     * Main update routine called by the game loop.
+     * Synchronizes UI state, handles game-over conditions, 
+     * and processes all active entity updates.
+     */
     public void update() {
-        // 1. SYNC UI OVERLAY
+        // Synchronize UI overlay with the current pause state
         view.updatePauseUI(input.isPaused());
 
-        // 2. LOGIKA GAME OVER
+        // Process Game Over state and trigger sound/callback once
         if (!player.isAlive()) {
             if (!isGameOverCalled) {
                 isGameOverCalled = true;
@@ -79,31 +93,31 @@ public class GamePresenter {
             return; 
         }
         
-        // 3. LOGIKA PAUSE
+        // Skip entity updates if the game is paused
         if (input.isPaused()) { 
             view.repaint(); 
             return; 
         }
         
-        // 4. UPDATE ANIMASI METEOR JATUH
+        // Update falling meteor animations and trigger impacts
         Iterator<Meteor> metIt = activeMeteors.iterator();
         while (metIt.hasNext()) {
             Meteor m = metIt.next();
             m.update();
             if (m.isLanded()) {
-                triggerMeteorImpact(m); // Meledak saat menyentuh target
+                triggerMeteorImpact(m); 
                 metIt.remove();
             }
         }
         
-        // 5. LOGIKA GAMEPLAY UTAMA
+        // General entity logic updates
         player.updateTimers();
         handleSkills();
         handleMovement();
         handleCombat();
         checkCollisions();
         
-        // --- UPDATE OBSTACLES ---
+        // Refresh and maintain the obstacle count in the arena
         Iterator<Obstacle> obsIt = obstacles.iterator();
         while (obsIt.hasNext()) {
             Obstacle o = obsIt.next();
@@ -122,7 +136,7 @@ public class GamePresenter {
             currentObsCount++;
         }
         
-        // Logika Spawn Yeti
+        // enemy spawn logic based on difficulty settings
         int spawnRate = settings.getDifficulty().equals(GameSettings.HARD) ? 80 : 
                         settings.getDifficulty().equals(GameSettings.MEDIUM) ? 120 : 200;
         spawnTimer++;
@@ -136,6 +150,10 @@ public class GamePresenter {
         view.repaint();
     }
 
+    /**
+     * Handles player and Yeti movement, including pathfinding 
+     * and obstacle collision checks.
+     */
     private void handleMovement() {
         int dx = 0, dy = 0;
         if (input.isUp()) dy--; if (input.isDown()) dy++;
@@ -152,6 +170,7 @@ public class GamePresenter {
             for (Obstacle o : obstacles) {
                 Rectangle obsBounds = new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight());
                 if (nextBounds.intersects(obsBounds)) {
+                    // Logic for falling into holes vs. colliding with solid objects
                     if (o.isHole()) {
                         if (!currentBounds.intersects(obsBounds)) { blocked = true; break; }
                     } else {
@@ -162,7 +181,7 @@ public class GamePresenter {
             if (!blocked) player.move(dx, dy);
         }
 
-        // PERGERAKAN YETI
+        // Logic for Yeti AI movement and obstacle avoidance
         for (Yeti y : yetis) {
             int oldX = y.getX();
             int oldY = y.getY();
@@ -186,6 +205,7 @@ public class GamePresenter {
                 else y.setPosition(y.getX(), oldY);
             }
 
+            // Simple stuck-avoidance logic for enemies
             if (!movedX && !movedY) {
                 if (moveDx == 0 && moveDy != 0) { 
                     y.setPosition(oldX + y.getSpeed(), oldY);
@@ -203,7 +223,6 @@ public class GamePresenter {
     private boolean isYetiColliding(Yeti y) {
         Rectangle yBounds = y.getBounds();
         for (Obstacle o : obstacles) {
-            // FIX: Yeti sekarang terhalang oleh semua rintangan termasuk Lubang Meteor
             if (yBounds.intersects(new Rectangle(o.getX(), o.getY(), o.getWidth(), o.getHeight()))) {
                 return true;
             }
@@ -211,8 +230,11 @@ public class GamePresenter {
         return false;
     }
 
+    /**
+     * Manages the logic for triggering special player abilities.
+     */
     private void handleSkills() {
-        // SKILL 1: GIANT SNOWBALL
+        // Skill 1: Activates Giant Snowball mode if ammo is sufficient
         if (input.isS1() && player.getCooldownS1() == 0 && player.getRemainingBullets() >= 5) {
             soundManager.playEffect("sfx_keyboard.wav");
             player.addBullets(-5);
@@ -220,19 +242,16 @@ public class GamePresenter {
             player.setCooldownS1(600); 
         }
 
-        // SKILL 2: METEOR STRIKE (LOGIKA BARU)
+        // Skill 2: Toggles targeting mode or spawns Meteor Strike at player position
         if (input.isS2() && player.getCooldownS2() == 0 && player.getRemainingBullets() >= 10) {
             if (settings.isUseMouse()) {
-                isTargetingMeteor = !isTargetingMeteor; // Aktifkan mode bidik
+                isTargetingMeteor = !isTargetingMeteor; 
             } else {
-                // Jika mouse mati, langsung spawn di posisi penguin
                 spawnMeteor(player.getX() + 25, player.getY() + 25);
             }
-            // Reset status input agar tidak toggle berkali-kali dalam satu pencetan
-            // (Tergantung implementasi InputHandler, jika perlu manual reset)
         }
 
-        // SKILL 3: GHOST MODE
+        // Skill 3: Activates Ghost Mode for temporary invisibility
         if (input.isS3() && player.getCooldownS3() == 0 && player.getRemainingBullets() >= 3) {
             soundManager.playEffect("sfx_skill_ghost.wav");
             player.addBullets(-3);
@@ -241,12 +260,14 @@ public class GamePresenter {
         }
     }
 
+    /**
+     * Handles shooting mechanics for both the player and enemies.
+     */
     private void handleCombat() {
-        // LOGIKA KLIK MOUSE UNTUK METEOR
         if (isTargetingMeteor && input.isMouseClicked()) {
             spawnMeteor(input.getMouseX(), input.getMouseY());
             isTargetingMeteor = false;
-            return; // Jangan tembak peluru biasa jika sedang klik meteor
+            return; 
         }
 
         boolean wantToShoot = input.isShooting() || (settings.isUseMouse() && input.isMouseClicked());
@@ -291,7 +312,7 @@ public class GamePresenter {
         }
         if (shootCooldown > 0) shootCooldown--;
 
-        // Yeti Shooting
+        // Automate Yeti projectile firing based on random intervals
         for (Yeti y : yetis) {
             if (rand.nextInt(300) < 2) {
                 soundManager.playEffect("sfx_yeti_shoot.wav");
@@ -299,7 +320,7 @@ public class GamePresenter {
             }
         }
 
-        // Projectile Update
+        // Update active projectiles and check for environmental collisions
         Iterator<Projectile> it = projectiles.iterator();
         while (it.hasNext()) {
             Projectile p = it.next();
@@ -316,6 +337,7 @@ public class GamePresenter {
                 }
             }
 
+            // Cleanup inactive or out-of-bounds projectiles
             if (!p.isActive() || p.getX() < 0 || p.getX() > 800 || p.getY() < 0 || p.getY() > 600) {
                 if (p.getOwner().equals(Projectile.YETI_TYPE)) {
                     player.addBullets(1); 
@@ -329,11 +351,15 @@ public class GamePresenter {
     private void spawnMeteor(int tx, int ty) {
         player.addBullets(-10);
         player.setCooldownS2(900);
-        activeMeteors.add(new Meteor(tx, ty)); // Meteor mulai jatuh dari langit
+        activeMeteors.add(new Meteor(tx, ty)); 
     }
 
+    /**
+     * Executes the impact logic when a meteor hits the ground, 
+     * including area-of-effect damage and environmental modification.
+     */
     private void triggerMeteorImpact(Meteor m) {
-        soundManager.playEffect("sfx_skill_meteor.wav"); // Suara diputar saat meteor menyentuh tanah
+        soundManager.playEffect("sfx_skill_meteor.wav"); 
         int targetX = m.getTargetX();
         int targetY = m.getTargetY();
         int holeW = 160; 
@@ -341,7 +367,7 @@ public class GamePresenter {
         int tx = targetX - (holeW / 2);
         int ty = targetY - (holeH / 2);
         
-        // Hancurkan Yeti di sekitar titik jatuh
+        // Remove Yeti entities within the blast radius
         yetis.removeIf(y -> {
             double dist = Math.sqrt(Math.pow(y.getX() + 30 - targetX, 2) + Math.pow(y.getY() + 30 - targetY, 2));
             if (dist < 150) { 
@@ -352,10 +378,13 @@ public class GamePresenter {
             return false;
         });
         
-        // Munculkan rintangan lubang
+        // Create a persistent environmental hole at the impact site
         obstacles.add(new Obstacle(tx, ty, holeW, holeH, true, 300)); 
     }
 
+    /**
+     * Checks for collisions between entities (Player, Yeti, and Projectiles).
+     */
     private void checkCollisions() {
         Rectangle pBounds = player.getBounds();
         for (Yeti y : yetis) {
@@ -383,7 +412,6 @@ public class GamePresenter {
         yetis.removeIf(y -> !y.isAlive());
     }
 
-    // Getters
     public List<Obstacle> getObstacles() { return obstacles; }
     public List<Yeti> getYetis() { return yetis; }
     public List<Projectile> getProjectiles() { return projectiles; }
@@ -392,12 +420,18 @@ public class GamePresenter {
     public Player getPlayer() { return player; }
     public InputHandler getInput() { return input; }
     
+    /**
+     * Initiates the game loop timer.
+     */
     public void startGame() { 
         view.requestFocusInWindow();
         gameLoop = new Timer(16, e -> update());
         gameLoop.start(); 
     }
 
+    /**
+     * Forces the game into a game-over state via player surrender.
+     */
     public void surrender() {
         player.die();
         update();

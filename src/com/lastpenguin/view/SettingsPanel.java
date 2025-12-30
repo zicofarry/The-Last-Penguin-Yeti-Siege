@@ -13,6 +13,11 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ * Handles the graphical settings interface.
+ * Provides controls for game mechanics, audio preferences, and custom keybindings
+ * while ensuring all modifications are synchronized with the GameSettings model.
+ */
 public class SettingsPanel extends JPanel {
 
     private Image backgroundImage;
@@ -33,6 +38,7 @@ public class SettingsPanel extends JPanel {
 
         loadResources();
 
+        // Synchronize local state with the current game configurations
         musicOn = current.getMusicVolume() > 0;
         sfxOn = current.getSfxVolume() > 0;
         mouseOn = current.isUseMouse();
@@ -40,18 +46,18 @@ public class SettingsPanel extends JPanel {
         tempKeyS2 = current.getKeyS2();
         tempKeyS3 = current.getKeyS3();
 
-        // Sesuaikan koordinat ini agar pas di tengah "kotak" pada gambar background kamu
+        // Coordinate definitions for component alignment within the background assets
         int labelX = 200; 
         int controlX = 440; 
         int startY = 150; 
         int gapY = 40; 
 
-        // --- ROW 1: DIFFICULTY ---
+        // --- ROW 1: DIFFICULTY CONFIGURATION ---
         addLabel("Difficulty:", labelX, startY);
         diffBox = new JComboBox<>(new String[]{GameSettings.EASY, GameSettings.MEDIUM, GameSettings.HARD});
         diffBox.setSelectedItem(current.getDifficulty());
         diffBox.setBounds(controlX, startY, 170, 30);
-        styleComboBox(diffBox); // Hanya teks, transparan
+        styleComboBox(diffBox); 
         diffBox.addActionListener(e -> {
             soundManager.playEffect("sfx_click.wav");
             onChange.run();
@@ -59,12 +65,12 @@ public class SettingsPanel extends JPanel {
         if (isIngame) diffBox.setEnabled(false);
         add(diffBox);
 
-        // --- ROW 2: MODE ---
+        // --- ROW 2: GAME MODE SELECTION ---
         addLabel("Game Mode:", labelX, startY + gapY);
         modeBox = new JComboBox<>(new String[]{GameSettings.OFFLINE, GameSettings.ONLINE});
         modeBox.setSelectedItem(current.getMode());
         modeBox.setBounds(controlX, startY + gapY, 170, 30);
-        styleComboBox(modeBox); // Hanya teks, transparan
+        styleComboBox(modeBox); 
         modeBox.addActionListener(e -> {
             soundManager.playEffect("sfx_click.wav");
             onChange.run();
@@ -72,7 +78,7 @@ public class SettingsPanel extends JPanel {
         if (isIngame) modeBox.setEnabled(false);
         add(modeBox);
 
-        // --- ROW 3, 4, 5: TOGGLES (Dibuat transparan juga agar nempel di BG) ---
+        // --- ROW 3, 4, 5: AUDIO AND CONTROL TOGGLES ---
         addLabel("Music:", labelX, startY + (gapY * 2));
         musicBtn = createToggleButton(musicOn, controlX, startY + (gapY * 2));
         musicBtn.addActionListener(e -> {
@@ -103,7 +109,7 @@ public class SettingsPanel extends JPanel {
         });
         add(mouseBtn);
 
-        // --- ROW 6, 7, 8: KEYS ---
+        // --- ROW 6, 7, 8: CUSTOM KEYBINDINGS ---
         addLabel("Skill 1 Key:", labelX, startY + (gapY * 5));
         btnKeyS1 = createKeyButton(tempKeyS1, 1, controlX, startY + (gapY * 5));
         add(btnKeyS1);
@@ -116,7 +122,7 @@ public class SettingsPanel extends JPanel {
         btnKeyS3 = createKeyButton(tempKeyS3, 3, controlX, startY + (gapY * 7));
         add(btnKeyS3);
 
-        // --- BACK BUTTON ---
+        // --- NAVIGATION CONTROLS ---
         JButton btnBack = new JButton("");
         btnBack.setFont(customFont.deriveFont(Font.BOLD, 22f));
         btnBack.setForeground(Color.WHITE);
@@ -132,6 +138,9 @@ public class SettingsPanel extends JPanel {
         add(btnBack);
     }
 
+    /**
+     * Loads required external assets including background graphics and custom fonts.
+     */
     private void loadResources() {
         try {
             backgroundImage = new ImageIcon("res/assets/images/ui/settings_bg.png").getImage();
@@ -139,22 +148,26 @@ public class SettingsPanel extends JPanel {
             GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
             ge.registerFont(customFont);
         } catch (Exception e) {
-            System.err.println("Gagal memuat resource Settings: " + e.getMessage());
+            System.err.println("Error loading settings resources: " + e.getMessage());
             customFont = new Font("Arial", Font.BOLD, 18);
         }
     }
 
+    /**
+     * Applies custom styling to ComboBox components to ensure visual 
+     * consistency with the game's aesthetic.
+     */
     private void styleComboBox(JComboBox<String> box) {
         box.setOpaque(false);
         box.setBackground(new Color(0, 0, 0, 0)); 
         box.setBorder(null); 
         box.setFont(customFont.deriveFont(Font.BOLD, 14f));
-        box.setForeground(new Color(60, 40, 20)); // Teks cokelat kayu
+        box.setForeground(new Color(60, 40, 20)); 
 
         box.setUI(new BasicComboBoxUI() {
             @Override
             protected JButton createArrowButton() {
-                // Hilangkan tombol panah
+                // Removes the default arrow button for a cleaner look
                 JButton btn = new JButton("");
                 btn.setBorder(null);
                 btn.setContentAreaFilled(false);
@@ -163,10 +176,9 @@ public class SettingsPanel extends JPanel {
                 return btn;
             }
 
-            // PENTING: Override ini untuk mengosongkan background bawaan UI
             @Override
             public void paintCurrentValueBackground(Graphics g, Rectangle bounds, boolean hasFocus) {
-                // Dikosongkan agar tidak menggambar kotak putih di belakang teks yang terpilih
+                // Overridden to maintain transparency for the selected item background
             }
 
             @Override
@@ -175,7 +187,6 @@ public class SettingsPanel extends JPanel {
                     @Override
                     protected JScrollPane createScroller() {
                         JScrollPane scroller = super.createScroller();
-                        // Border es hanya untuk list yang muncul saat diklik
                         scroller.setBorder(new LineBorder(new Color(150, 200, 255), 1));
                         return scroller;
                     }
@@ -190,19 +201,16 @@ public class SettingsPanel extends JPanel {
                 label.setFont(customFont.deriveFont(14f));
                 label.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
 
-                // PERBAIKAN: Cek index
-                // Jika index == -1, artinya ini teks yang tampil di depan (saat dropdown tertutup)
                 if (index == -1) {
-                    label.setOpaque(false); // Transparan total
+                    label.setOpaque(false); 
                     label.setForeground(new Color(60, 40, 20));
                 } else {
-                    // Jika index >= 0, artinya ini adalah item di dalam list popup
                     label.setOpaque(true);
                     if (isSelected) {
-                        label.setBackground(new Color(180, 220, 255)); // Biru es saat hover
+                        label.setBackground(new Color(180, 220, 255)); 
                         label.setForeground(Color.BLACK);
                     } else {
-                        label.setBackground(new Color(245, 250, 255)); // Background list pilihan
+                        label.setBackground(new Color(245, 250, 255)); 
                         label.setForeground(new Color(60, 40, 20));
                     }
                 }
@@ -219,21 +227,25 @@ public class SettingsPanel extends JPanel {
         add(label);
     }
 
+    /**
+     * Creates a transparent toggle button designed to blend with the background graphics.
+     */
     private JButton createToggleButton(boolean state, int x, int y) {
         JButton btn = new JButton(state ? "ON" : "OFF");
         btn.setFont(customFont.deriveFont(Font.BOLD, 16f));
         btn.setBounds(x, y, 160, 30);
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
-        // Transparan agar menyatu dengan background gambar
         btn.setContentAreaFilled(false);
         btn.setBorder(null); 
         btn.setForeground(new Color(60, 40, 20));
-
         return btn;
     }
 
+    /**
+     * Initializes a button for capturing custom key inputs.
+     * Triggers a listening state to reassign keybindings for specific skills.
+     */
     private JButton createKeyButton(int initialKey, int skillNum, int x, int y) {
         JButton btn = new JButton(KeyEvent.getKeyText(initialKey));
         btn.setFont(customFont.deriveFont(Font.BOLD, 14f));
@@ -264,7 +276,6 @@ public class SettingsPanel extends JPanel {
         return btn;
     }
 
-    // Getters...
     public String getSelectedDifficulty() { return (String) diffBox.getSelectedItem(); }
     public String getSelectedMode() { return (String) modeBox.getSelectedItem(); }
     public boolean isMusicEnabled() { return musicOn; }

@@ -7,17 +7,31 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import java.net.URL;
 
+/**
+ * Handles audio playback for the application.
+ * This class manages both short-duration sound effects and continuous 
+ * background music, integrating directly with user settings to control 
+ * playback availability.
+ */
 public class Sound {
     private Clip musicClip;
     private GameSettings settings;
 
-    // Tambahkan method untuk menghubungkan settings
+    /**
+     * Associates the game settings with the sound manager to enable 
+     * volume-based playback control.
+     */
     public void setSettings(GameSettings settings) {
         this.settings = settings;
     }
 
+    /**
+     * Plays a specific sound effect file.
+     * Playback is automatically bypassed if the SFX volume is disabled 
+     * within the game settings.
+     */
     public void playEffect(String fileName) {
-        // Cek apakah SFX Volume > 0 (Artinya ON)
+        // Validates if SFX playback is enabled based on user configurations
         if (settings != null && settings.getSfxVolume() <= 0) return;
 
         try {
@@ -31,11 +45,16 @@ public class Sound {
         }
     }
 
+    /**
+     * Initiates background music playback in a continuous loop.
+     * Ensures any currently playing music is terminated before starting a new track, 
+     * provided the music setting is enabled.
+     */
     public void playMusic(String fileName) {
-        // Pastikan musik yang lama berhenti dulu sebelum cek pengaturan
+        // Ensures previous music instances are stopped before checking new settings
         stopMusic(); 
 
-        // Jika pengaturan musik OFF (volume <= 0), maka berhenti di sini
+        // Prevents playback if music is disabled in the game settings
         if (settings != null && settings.getMusicVolume() <= 0) return;
 
         try {
@@ -50,6 +69,9 @@ public class Sound {
         }
     }
 
+    /**
+     * Stops the currently active background music and releases system resources.
+     */
     public void stopMusic() {
         if (musicClip != null && musicClip.isRunning()) {
             musicClip.stop();

@@ -10,6 +10,11 @@ import java.io.IOException;
 import java.util.List;
 import com.lastpenguin.model.SQLiteManager;
 
+/**
+ * Represents the main menu interface.
+ * This class handles user identification, displays the leaderboard 
+ * retrieved from databases, and provides navigation to the game and settings.
+ */
 public class MenuPanel extends JPanel {
 
     private Image backgroundImage;
@@ -38,11 +43,14 @@ public class MenuPanel extends JPanel {
         initComponents();
     }
 
+    /**
+     * Loads external resources such as background images and custom typography.
+     */
     private void loadResources() {
         try {
             backgroundImage = new javax.swing.ImageIcon("res/assets/images/ui/main_menu_bg.png").getImage();
         } catch (Exception e) {
-            System.err.println("Gagal load background menu: " + e.getMessage());
+            System.err.println("Failed to load menu background: " + e.getMessage());
         }
 
         try {
@@ -54,6 +62,10 @@ public class MenuPanel extends JPanel {
         }
     }
 
+    /**
+     * Initializes UI components including the name input field, 
+     * the leaderboard table, and navigation buttons.
+     */
     private void initComponents() {
         Color woodTextColor = new Color(60, 40, 20);
 
@@ -72,6 +84,7 @@ public class MenuPanel extends JPanel {
         });
         this.add(nameInputField);
 
+        // Leaderboard table configuration
         String[] columnNames = {"USERNAME", "SCORE", "MISS", "BULLET"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
@@ -87,6 +100,7 @@ public class MenuPanel extends JPanel {
         leaderboardTable.setForeground(woodTextColor);
         if (customFont != null) leaderboardTable.setFont(customFont.deriveFont(16f));
 
+        // Handles row selection and visual feedback on the table
         leaderboardTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -115,6 +129,7 @@ public class MenuPanel extends JPanel {
             }
         });
 
+        // Custom renderer for transparent table rows and hover effects
         DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
@@ -146,6 +161,7 @@ public class MenuPanel extends JPanel {
         scrollPane.setBorder(null);
         this.add(scrollPane);
 
+        // Action button initialization
         playButton = createStyledButton("PLAY");
         settingsButton = createStyledButton("SETTINGS");
         exitButton = createStyledButton("EXIT");
@@ -174,6 +190,10 @@ public class MenuPanel extends JPanel {
         this.add(exitButton);
     }
 
+    /**
+     * Helper to create buttons that match the menu's aesthetic 
+     * with hover state transitions.
+     */
     private JButton createStyledButton(String text) {
         JButton btn = new JButton(text);
         if (customFont != null) btn.setFont(customFont.deriveFont(Font.BOLD, 22f));
@@ -196,8 +216,8 @@ public class MenuPanel extends JPanel {
     public String getUsername() { return nameInputField.getText(); }
 
     /**
-     * Metode baru untuk mengisi data tabel secara langsung
-     * @param dataList List berisi Object[] hasil query database
+     * Updates the table model with a new list of leaderboard entries.
+     * @param dataList List containing Object arrays representing database records.
      */
     public void setLeaderboardData(List<Object[]> dataList) {
         tableModel.setRowCount(0);

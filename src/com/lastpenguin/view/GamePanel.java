@@ -10,6 +10,11 @@ import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
+/**
+ * The primary graphical interface for the game session.
+ * This class manages the rendering of all game entities, environmental obstacles, 
+ * and UI overlays for pause and game-over states.
+ */
 public class GamePanel extends JPanel {
     private GamePresenter presenter;
     private HUD hud = new HUD();
@@ -17,7 +22,7 @@ public class GamePanel extends JPanel {
     private BufferedImage ballPImg, ballYImg, ballGiantImg;
     private BufferedImage meteorImg, targetImg;
     private BufferedImage playerBarImg, skill1Img, skill2Img, skill3Img, aimArrowImg;
-    private BufferedImage buffSkill1Vfx; // ASET BARU UNTUK BUFF SKILL 1
+    private BufferedImage buffSkill1Vfx; 
     private Image pauseBgImage; 
     private Image gameOverBgImage; 
     private Font customFont;    
@@ -36,10 +41,13 @@ public class GamePanel extends JPanel {
         setLayout(null); 
         loadAssets();
 
-        // --- SETUP UI (Pause & Game Over) ---
+        // Initialize UI components for navigation and game state feedback
         setupUI(quitAction, settingsAction, restartAction);
     }
 
+    /**
+     * Initializes and configures the overlay menus for Pausing and Game Over states.
+     */
     private void setupUI(ActionListener quitAction, ActionListener settingsAction, ActionListener restartAction) {
         int pauseW = 520; int pauseH = 650;
         int pauseX = (800 - pauseW) / 2; int pauseY = (600 - pauseH) / 2;
@@ -81,6 +89,9 @@ public class GamePanel extends JPanel {
         add(gameOverMenu);
     }
 
+    /**
+     * Utility method to create a transparent panel with a background image.
+     */
     private JPanel createOverlayPanel(int x, int y, int w, int h, Image bgImage) {
         JPanel panel = new JPanel() {
             @Override
@@ -123,6 +134,9 @@ public class GamePanel extends JPanel {
         return btn;
     }
 
+    /**
+     * Toggles the visibility of the Pause or Game Over menus based on game state.
+     */
     public void updatePauseUI(boolean isPaused) {
         if (presenter != null && !presenter.getPlayer().isAlive()) {
             pauseMenu.setVisible(false); 
@@ -145,6 +159,9 @@ public class GamePanel extends JPanel {
         } else { pauseMenu.setVisible(false); }
     }
 
+    /**
+     * Loads required image assets and custom fonts from the resources directory.
+     */
     private void loadAssets() {
         arenaImg = AssetLoader.loadImage("environment/arena.png");
         lubangImg = AssetLoader.loadImage("environment/lubang.png");
@@ -164,7 +181,7 @@ public class GamePanel extends JPanel {
         skill2Img = AssetLoader.loadImage("ui/skill2.png");
         skill3Img = AssetLoader.loadImage("ui/skill3.png");
         aimArrowImg = AssetLoader.loadImage("vfx/aim_arrow.png");
-        buffSkill1Vfx = AssetLoader.loadImage("vfx/buff_skill1.png"); // LOAD BUFF VFX
+        buffSkill1Vfx = AssetLoader.loadImage("vfx/buff_skill1.png"); 
         try {
             customFont = Font.createFont(Font.TRUETYPE_FONT, new File("res/assets/fonts/icy_font.ttf")).deriveFont(18f);
         } catch (Exception e) { customFont = new Font("Arial", Font.BOLD, 18); }
@@ -172,6 +189,10 @@ public class GamePanel extends JPanel {
 
     public void setPresenter(GamePresenter p) { this.presenter = p; }
 
+    /**
+     * Core drawing method called during the game loop.
+     * Manages the rendering order to ensure entities appear correctly relative to the environment.
+     */
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -180,7 +201,7 @@ public class GamePanel extends JPanel {
 
         if (arenaImg != null) g.drawImage(arenaImg, 0, 0, 800, 600, null);
 
-        // --- DRAW OBSTACLES ---
+        // Rendering environmental obstacles
         for (Obstacle o : presenter.getObstacles()) {
             if (o.isHole()) {
                 g.drawImage(lubangImg, o.getX(), o.getY(), o.getWidth(), o.getHeight(), null);
@@ -203,7 +224,7 @@ public class GamePanel extends JPanel {
             }
         }
 
-        // --- TARGET & METEOR ---
+        // Rendering special ability targeting and effects
         if (presenter.isTargetingMeteor()) {
             g.drawImage(targetImg, presenter.getInput().getMouseX() - 40, presenter.getInput().getMouseY() - 40, 80, 80 , null);
         }
@@ -211,14 +232,14 @@ public class GamePanel extends JPanel {
             g.drawImage(meteorImg, m.getX(), m.getY(), 80, 80, null);
         }
 
-        // --- PROJECTILES ---
+        // Rendering all active projectiles
         for (Projectile p : presenter.getProjectiles()) {
             BufferedImage cb = p.isPiercing() ? ballGiantImg : (p.getOwner().equals(Projectile.YETI_TYPE) ? ballYImg : ballPImg);
             int sz = p.isPiercing() ? 80 : (p.getOwner().equals(Projectile.YETI_TYPE) ? 20 : 15);
             g.drawImage(cb, p.getX(), p.getY(), sz, sz, null);
         }
 
-        // --- YETIS ---
+        // Rendering enemy units
         for (Yeti y : presenter.getYetis()) {
             int idx = y.getSpriteIndex();
             if (yetiSprites != null && idx < yetiSprites.length) {
@@ -226,27 +247,25 @@ public class GamePanel extends JPanel {
             }
         }
 
-        // --- PENGUIN & AIM ARROW ---
+        // Rendering player character and associated visual effects
         if (presenter.getPlayer().isAlive()) {
             Player p = presenter.getPlayer();
             
-            // Logika Transparansi (Ghost / Invisible)
             if (p.isGhost()) {
                 g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
             }
             
-            // 1. DRAW BUFF SKILL 1 (Aura dibelakang Penguin)
+            // Skill 1 aura effect
             if (p.isGiantBuffActive() && buffSkill1Vfx != null) {
-                int buffSize = 110; // Ukuran aura buff
-                int bx = p.getX() + 25 - (buffSize / 2); // Center X terhadap penguin (50/2 = 25)
-                int by = p.getY() + 25 - (buffSize / 2); // Center Y
+                int buffSize = 110; 
+                int bx = p.getX() + 25 - (buffSize / 2); 
+                int by = p.getY() + 25 - (buffSize / 2); 
                 
-                // Sedikit animasi pulsing sederhana agar buff terlihat 'hidup'
                 float pulse = (float) Math.sin(System.currentTimeMillis() * 0.005) * 5;
                 g2.drawImage(buffSkill1Vfx, (int)(bx - pulse/2), (int)(by - pulse/2), (int)(buffSize + pulse), (int)(buffSize + pulse), null);
             }
 
-            // 2. DRAW AIM ARROW
+            // Target indicator arrow
             if (aimArrowImg != null) {
                 int px = p.getX() + 25;
                 int py = p.getY() + 25;
@@ -258,14 +277,11 @@ public class GamePanel extends JPanel {
                 gA.dispose();
             }
 
-            // 3. DRAW PENGUIN SPRITE
             drawPenguin(g);
-            
-            // Reset Transparansi ke normal
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
         }
 
-        // --- HUD UPDATE ---
+        // Rendering HUD and screen dimming for non-active states
         hud.draw(g, presenter.getPlayer(), customFont, playerBarImg, skill1Img, skill2Img, skill3Img, ballPImg);
 
         if (presenter.getInput().isPaused() || !presenter.getPlayer().isAlive()) {
@@ -274,6 +290,10 @@ public class GamePanel extends JPanel {
         }
     }
 
+    /**
+     * Extracts and draws the appropriate frame from the player's sprite sheet 
+     * based on movement direction and animation step.
+     */
     private void drawPenguin(Graphics g) {
         if (penguinSheet == null) return;
         int row = 0;

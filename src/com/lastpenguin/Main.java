@@ -7,6 +7,10 @@ import javax.swing.*;
 import java.awt.event.ActionListener;
 import java.util.List;
 
+/**
+ * Entry point of the application. Manages the primary application flow,
+ * including database initialization, window management, and view transitions.
+ */
 public class Main {
     private static GameWindow window;
     private static GameSettings currentSettings;
@@ -14,6 +18,10 @@ public class Main {
     private static SettingsPanel settingsView;
     private static Sound soundManager = new Sound();
 
+    /**
+     * Initializes the local database, loads user configurations, 
+     * and launches the graphical user interface.
+     */
     public static void main(String[] args) {
         SQLiteManager.initDatabase();
         currentSettings = SQLiteManager.loadSettings();
@@ -26,9 +34,14 @@ public class Main {
         });
     }
 
+    /**
+     * Displays the main menu, initiates background music, 
+     * and refreshes the leaderboard based on the current connection mode.
+     */
     public static void showMenu() {
+        currentSettings = SQLiteManager.loadSettings();
+        soundManager.setSettings(currentSettings);
         soundManager.playMusic("bgm_main.wav");
-        currentSettings = SQLiteManager.loadSettings(); // Pastikan settings terbaru dimuat
         
         menuView = new MenuPanel(
             e -> {
@@ -41,14 +54,13 @@ public class Main {
             e -> showSettings(false, () -> showMenu())
         );
         
-        // Logika Leaderboard: Ambil dari MySQL jika Online, SQLite jika Offline
         refreshMenuLeaderboard();
-        
         window.setView(menuView);
     }
 
     /**
-     * Helper untuk mengisi data leaderboard di MenuPanel berdasarkan mode aktif
+     * Updates the leaderboard data in the menu view by fetching records 
+     * from either the global MySQL server or the local SQLite database.
      */
     private static void refreshMenuLeaderboard() {
         List<Object[]> data;
@@ -62,6 +74,10 @@ public class Main {
         menuView.setLeaderboardData(data);
     }
 
+    /**
+     * Navigates to the settings view. Handles the logic for auto-saving 
+     * configuration changes to the local database.
+     */
     public static void showSettings(boolean isIngame, Runnable onBackAction) {
         Runnable autosave = () -> {
             if (settingsView == null) return;
@@ -97,26 +113,15 @@ public class Main {
         window.setView(settingsView);
     }
 
+    /**
+     * Initializes the game session by loading player statistics, 
+     * setting up the game loop, and handling post-game data synchronization.
+     */
     public static void startGame(String username) {
         String diff = currentSettings.getDifficulty();
-        int initialBullets = 0;
-
-        // 1. Cek Mode: Ambil peluru dari MySQL jika Online, atau SQLite jika Offline
-        if (currentSettings.getMode().equals(GameSettings.ONLINE)) {
-            // Ambil data dari MySQL
-            Object[] onlineData = MySQLManager.getInitialPlayerData(username, diff);
-            initialBullets = (int) onlineData[2]; // Index 2 adalah remaining_bullets
-            System.out.println("[ONLINE] Memulai sesi. Peluru terakhir di server: " + initialBullets);
-        } else {
-            // Ambil data dari SQLite
-            initialBullets = SQLiteManager.getLastBulletCount(username, diff);
-            System.out.println("[OFFLINE] Memulai sesi. Peluru terakhir di lokal: " + initialBullets);
-        }
-
-        // 2. Buat objek Player dengan initialBullets yang sudah disaring
-        // Score dan Missed otomatis 0 sesuai constructor Player(String, int)
-        Player player = new Player(username, initialBullets); 
+        int initialBullets = SQLiteManager.getLastBulletCount(username, diff);
         
+        Player player = new Player(username, initialBullets); 
         final GamePanel[] gamePanelRef = new GamePanel[1];
 
         ActionListener quitAction = e -> showMenu();
@@ -128,9 +133,8 @@ public class Main {
 
         gamePanelRef[0] = new GamePanel(quitAction, settingsAction, restartAction);
         
-        // 3. Logic Simpan Data saat Game Over
         Runnable onGameOver = () -> {
-            // Selalu simpan ke SQLite sebagai backup lokal
+            // Persist scores to local SQLite database
             SQLiteManager.saveScore(
                 player.getUsername(),
                 player.getScore(),
@@ -141,7 +145,7 @@ public class Main {
                 currentSettings.getMode()
             );
 
-            // Simpan ke MySQL hanya jika mode ONLINE
+            // Synchronize scores with global MySQL server in a background thread if online mode is active
             if (currentSettings.getMode().equals(GameSettings.ONLINE)) {
                 new Thread(() -> {
                     MySQLManager.saveScoreOnline(
