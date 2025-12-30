@@ -24,11 +24,11 @@ public class Player {
     private int s1RemainingShots = 0; // Melacak sisa peluru Giant Snowball
     private int ghostDuration = 0;    // Melacak durasi Invisible
 
-    public Player(String username) {
+    public Player(String username, int startingBullets) {
         this.username = username;
         this.x = 375; // Posisi awal tengah
         this.y = 200;
-        this.remainingBullets = 0; 
+        this.remainingBullets = startingBullets; 
         this.score = 0;
         this.yetiKilled = 0;
         this.missedShots = 0;

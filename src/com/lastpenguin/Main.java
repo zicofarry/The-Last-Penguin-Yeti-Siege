@@ -98,7 +98,10 @@ public class Main {
     }
 
     public static void startGame(String username) {
-        Player player = new Player(username); 
+        String diff = currentSettings.getDifficulty();
+        int initialBullets = SQLiteManager.getLastBulletCount(username, diff);
+        
+        Player player = new Player(username, initialBullets); 
         final GamePanel[] gamePanelRef = new GamePanel[1];
 
         ActionListener quitAction = e -> showMenu();

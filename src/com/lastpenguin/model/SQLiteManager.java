@@ -23,7 +23,7 @@ public class SQLiteManager {
                         "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                         "username TEXT UNIQUE NOT NULL);");
             
-            // Tabel Scores dengan kolom lengkap
+            // Tabel Scores
             stmt.execute("CREATE TABLE IF NOT EXISTS scores (" +
                         "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                         "player_id INTEGER NOT NULL, " +
@@ -51,29 +51,65 @@ public class SQLiteManager {
     }
 
     /**
+     * MENGAMBIL PELURU TERAKHIR BERDASARKAN DIFFICULTY
+     * Jika data tidak ditemukan (pemain baru), return 0.
+     */
+    public static int getLastBulletCount(String username, String difficulty) {
+        String sql = "SELECT s.remaining_bullets FROM scores s " +
+                    "JOIN players p ON s.player_id = p.id " +
+                    "WHERE p.username = ? AND s.difficulty = ? " +
+                    "ORDER BY s.played_at DESC LIMIT 1";
+
+        try (Connection conn = connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, difficulty);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("remaining_bullets");
+            }
+        } catch (SQLException e) {
+            System.err.println("Gagal mengambil sisa peluru: " + e.getMessage());
+        }
+        return 0; // Default 0 untuk pemain baru
+    }
+
+    /**
      * MENGAMBIL DATA UNTUK JTABLE
-     * Mengembalikan list array object: [Username, Score, Missed, Bullets]
+     * - Score: High Score
+     * - Miss: Missed shots dari baris High Score tersebut
+     * - Bullet: Sisa peluru dari baris TERAKHIR (Played At terbaru)
      */
     public static List<Object[]> getLeaderboardData(String difficulty) {
         List<Object[]> data = new ArrayList<>();
         
-        String sql = "SELECT p.username, MAX(s.score) as high_score, s.missed_shots, s.remaining_bullets " +
-                     "FROM players p " +
-                     "JOIN scores s ON p.id = s.player_id " +
+        // Query ini melakukan join dengan subquery MAX(score) untuk mendapatkan baris High Score,
+        // dan menggunakan subquery terpisah untuk mengambil 'remaining_bullets' terbaru.
+        String sql = "SELECT p.username, s.score as high_score, s.missed_shots, " +
+                     "       (SELECT remaining_bullets FROM scores WHERE player_id = p.id AND difficulty = ? ORDER BY played_at DESC LIMIT 1) as last_bullets " +
+                     "FROM scores s " +
+                     "JOIN players p ON s.player_id = p.id " +
+                     "INNER JOIN (" +
+                     "    SELECT player_id, MAX(score) as max_score " +
+                     "    FROM scores " +
+                     "    WHERE difficulty = ? " +
+                     "    GROUP BY player_id" +
+                     ") m ON s.player_id = m.player_id AND s.score = m.max_score " +
                      "WHERE s.difficulty = ? " +
-                     "GROUP BY p.username " +
-                     "ORDER BY s.score DESC LIMIT 50";
+                     "GROUP BY p.username " + // Mengatasi jika ada skor yang sama persis
+                     "ORDER BY high_score DESC LIMIT 50";
 
         try (Connection conn = connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, difficulty);
-            ResultSet rs = ps.executeQuery();
+            ps.setString(1, difficulty); // Untuk subquery peluru terakhir
+            ps.setString(2, difficulty); // Untuk subquery pencarian high score
+            ps.setString(3, difficulty); // Untuk filter utama
             
+            ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 data.add(new Object[]{
                     rs.getString("username"),
                     rs.getInt("high_score"),
-                    rs.getInt("missed_shots"),
-                    rs.getInt("remaining_bullets")
+                    rs.getInt("missed_shots"), // Diambil dari baris high score
+                    rs.getInt("last_bullets")  // Diambil dari sesi terakhir
                 });
             }
         } catch (SQLException e) {
@@ -111,7 +147,7 @@ public class SQLiteManager {
                     ps.setString(6, diff);
                     ps.setString(7, mode);
                     ps.executeUpdate();
-                    System.out.println("Skor berhasil disimpan!");
+                    System.out.println("[DB] Progres berhasil disimpan.");
                 }
             }
         } catch (SQLException e) {
@@ -140,12 +176,6 @@ public class SQLiteManager {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return new GameSettings(); // Default jika gagal
-    }
-
-    // Helper untuk memotong nama (opsional, tabel JTable biasanya menghandle ini secara visual)
-    private static String truncateName(String name, int max) {
-        if (name.length() <= max) return name;
-        return name.substring(0, max - 2) + "..";
+        return new GameSettings(); 
     }
 }
