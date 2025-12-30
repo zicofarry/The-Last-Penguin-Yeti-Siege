@@ -24,11 +24,9 @@ public class MenuPanel extends JPanel {
     private ActionListener playListener;
     private ActionListener settingsListener;
 
-    // Warna tombol cokelat gelap agar kontras dengan papan kayu
     private final Color buttonNormalColor = new Color(80, 50, 30); 
     private final Color buttonHoverColor = new Color(255, 255, 255); 
     
-    // Variabel untuk melacak baris yang sedang di-hover
     private int hoveredRow = -1;
 
     public MenuPanel(ActionListener playListener, ActionListener settingsListener) {
@@ -59,7 +57,6 @@ public class MenuPanel extends JPanel {
     private void initComponents() {
         Color woodTextColor = new Color(60, 40, 20);
 
-        // --- A. INPUT NAMA (Default Kosong) ---
         nameInputField = new JTextField(""); 
         nameInputField.setBounds(240, 160, 300, 35);
         nameInputField.setOpaque(false);
@@ -75,7 +72,6 @@ public class MenuPanel extends JPanel {
         });
         this.add(nameInputField);
 
-        // --- B. TABEL LEADERBOARD ---
         String[] columnNames = {"USERNAME", "SCORE", "MISS", "BULLET"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
@@ -91,7 +87,6 @@ public class MenuPanel extends JPanel {
         leaderboardTable.setForeground(woodTextColor);
         if (customFont != null) leaderboardTable.setFont(customFont.deriveFont(16f));
 
-        // --- LOGIKA HOVER & KLIK TABEL ---
         leaderboardTable.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -102,7 +97,6 @@ public class MenuPanel extends JPanel {
                     SoundManager.playEffect("sfx_click.wav"); 
                 }
             }
-
             @Override
             public void mouseExited(MouseEvent e) {
                 hoveredRow = -1;
@@ -121,22 +115,15 @@ public class MenuPanel extends JPanel {
             }
         });
 
-        // Custom Renderer untuk Efek Hover (Highlight)
         DefaultTableCellRenderer cellRenderer = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 ((JLabel)c).setHorizontalAlignment(JLabel.CENTER);
-                
-                // Jika baris sedang di-hover, berikan warna highlight putih transparan
                 if (row == hoveredRow) {
                     c.setBackground(new Color(255, 255, 255, 50)); 
                 } else {
                     c.setBackground(new Color(0, 0, 0, 0)); 
-                }
-
-                if (c instanceof JComponent) {
-                    ((JComponent) c).setBorder(null);
                 }
                 return c;
             }
@@ -159,7 +146,6 @@ public class MenuPanel extends JPanel {
         scrollPane.setBorder(null);
         this.add(scrollPane);
 
-        // --- C. TOMBOL (Play, Settings, Exit) ---
         playButton = createStyledButton("PLAY");
         settingsButton = createStyledButton("SETTINGS");
         exitButton = createStyledButton("EXIT");
@@ -168,20 +154,16 @@ public class MenuPanel extends JPanel {
         settingsButton.setBounds(330, 480, 150, 50);
         exitButton.setBounds(475, 480, 150, 50);
 
-        // Menambahkan Sound Effect saat tombol diklik
         playButton.addActionListener(e -> {
             SoundManager.playEffect("sfx_click.wav");
             playListener.actionPerformed(e);
         });
-
         settingsButton.addActionListener(e -> {
             SoundManager.playEffect("sfx_click.wav");
             settingsListener.actionPerformed(e);
         });
-
         exitButton.addActionListener(e -> {
             SoundManager.playEffect("sfx_click.wav");
-            // Beri sedikit jeda agar suara terdengar sebelum exit
             Timer timer = new Timer(200, ex -> System.exit(0));
             timer.setRepeats(false);
             timer.start();
@@ -213,14 +195,16 @@ public class MenuPanel extends JPanel {
 
     public String getUsername() { return nameInputField.getText(); }
 
-    public void refreshLeaderboard(String difficulty) {
+    /**
+     * Metode baru untuk mengisi data tabel secara langsung
+     * @param dataList List berisi Object[] hasil query database
+     */
+    public void setLeaderboardData(List<Object[]> dataList) {
         tableModel.setRowCount(0);
-        List<Object[]> dataList = SQLiteManager.getLeaderboardData(difficulty);
-        
-        for (Object[] row : dataList) {
-            tableModel.addRow(new Object[]{
-                row[0], row[1], row[2], row[3] 
-            });
+        if (dataList != null) {
+            for (Object[] row : dataList) {
+                tableModel.addRow(row);
+            }
         }
     }
 

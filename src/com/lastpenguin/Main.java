@@ -5,6 +5,7 @@ import com.lastpenguin.view.*;
 import com.lastpenguin.presenter.GamePresenter;
 import javax.swing.*;
 import java.awt.event.ActionListener;
+import java.util.List;
 
 public class Main {
     private static GameWindow window;
@@ -27,7 +28,8 @@ public class Main {
 
     public static void showMenu() {
         soundManager.playMusic("bgm_main.wav");
-        GameSettings settings = SQLiteManager.loadSettings();
+        currentSettings = SQLiteManager.loadSettings(); // Pastikan settings terbaru dimuat
+        
         menuView = new MenuPanel(
             e -> {
                 if (menuView.getUsername().isEmpty() || menuView.getUsername().equals("Player Name")) {
@@ -38,8 +40,26 @@ public class Main {
             },
             e -> showSettings(false, () -> showMenu())
         );
-        menuView.refreshLeaderboard(settings.getDifficulty());
+        
+        // Logika Leaderboard: Ambil dari MySQL jika Online, SQLite jika Offline
+        refreshMenuLeaderboard();
+        
         window.setView(menuView);
+    }
+
+    /**
+     * Helper untuk mengisi data leaderboard di MenuPanel berdasarkan mode aktif
+     */
+    private static void refreshMenuLeaderboard() {
+        List<Object[]> data;
+        if (currentSettings.getMode().equals(GameSettings.ONLINE)) {
+            data = MySQLManager.getGlobalLeaderboard(currentSettings.getDifficulty());
+            System.out.println("[INFO] Memuat Leaderboard Global (MySQL)");
+        } else {
+            data = SQLiteManager.getLeaderboardData(currentSettings.getDifficulty());
+            System.out.println("[INFO] Memuat Leaderboard Lokal (SQLite)");
+        }
+        menuView.setLeaderboardData(data);
     }
 
     public static void showSettings(boolean isIngame, Runnable onBackAction) {
@@ -81,23 +101,17 @@ public class Main {
         Player player = new Player(username); 
         final GamePanel[] gamePanelRef = new GamePanel[1];
 
-        // 1. Aksi untuk Keluar ke Menu Utama
         ActionListener quitAction = e -> showMenu();
-
-        // 2. Aksi untuk Buka Settings di Tengah Game
         ActionListener settingsAction = e -> showSettings(true, () -> {
             window.setView(gamePanelRef[0]);
             gamePanelRef[0].requestFocusInWindow();
         });
-
-        // 3. Aksi untuk Restart Game (Play Again)
         ActionListener restartAction = e -> startGame(username);
 
-        // Update: Inisialisasi GamePanel dengan 3 parameter Action
         gamePanelRef[0] = new GamePanel(quitAction, settingsAction, restartAction);
         
-        // Callback saat game berakhir (Hanya simpan data, UI dihandle GamePanel)
         Runnable onGameOver = () -> {
+            // 1. Simpan ke SQLite Lokal (Selalu dilakukan sebagai backup/riwayat)
             SQLiteManager.saveScore(
                 player.getUsername(),
                 player.getScore(),
@@ -107,7 +121,21 @@ public class Main {
                 currentSettings.getDifficulty(),
                 currentSettings.getMode()
             );
-            // Kita tidak memanggil showMenu() di sini agar panel Game Over es tetap terlihat
+
+            // 2. Simpan ke MySQL Online jika mode Online aktif
+            if (currentSettings.getMode().equals(GameSettings.ONLINE)) {
+                // Menjalankan proses jaringan di thread berbeda agar UI tidak freeze
+                new Thread(() -> {
+                    MySQLManager.saveScoreOnline(
+                        player.getUsername(),
+                        player.getScore(),
+                        player.getYetiKilled(),
+                        player.getMissedShots(),
+                        player.getRemainingBullets(),
+                        currentSettings.getDifficulty()
+                    );
+                }).start();
+            }
         };
 
         GamePresenter presenter = new GamePresenter(player, gamePanelRef[0], currentSettings, onGameOver);
