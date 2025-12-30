@@ -1,3 +1,8 @@
+# JANJI
+
+Saya **Muhammad 'Azmi Salam** dengan NIM **2406010** mengerjakan **Tugas Masa Depan** dalam mata kuliah **Desain Pemrograman Berorientasi Objek** untuk keberkahanNya maka saya tidak melakukan kecurangan seperti yang telah dispesifikasikan. Aamiin.
+
+
 ## The Last Penguin: Yeti Siege
 
 **The Last Penguin: Yeti Siege** adalah aplikasi permainan desktop berbasis Java yang mengusung mekanisme *top-down shooter*. Proyek ini dirancang menggunakan arsitektur **Model-View-Presenter (MVP)** untuk memisahkan logika permainan, manajemen data, dan antarmuka pengguna secara modular. Aplikasi ini mengintegrasikan sistem basis data hibrida (SQLite dan MySQL) untuk pengelolaan data lokal dan kompetisi global.
