@@ -317,8 +317,10 @@ public class GamePresenter {
             }
 
             if (!p.isActive() || p.getX() < 0 || p.getX() > 800 || p.getY() < 0 || p.getY() > 600) {
-                if (p.getOwner().equals(Projectile.YETI_TYPE)) player.addBullets(1);
-                else if (p.getOwner().equals(Projectile.PLAYER_TYPE) && !p.isHit()) player.registerMiss();
+                if (p.getOwner().equals(Projectile.YETI_TYPE)) {
+                    player.addBullets(1); 
+                    player.registerMiss(); 
+                }
                 it.remove();
             }
         }
