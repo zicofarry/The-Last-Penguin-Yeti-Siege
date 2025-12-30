@@ -99,9 +99,24 @@ public class Main {
 
     public static void startGame(String username) {
         String diff = currentSettings.getDifficulty();
-        int initialBullets = SQLiteManager.getLastBulletCount(username, diff);
-        
+        int initialBullets = 0;
+
+        // 1. Cek Mode: Ambil peluru dari MySQL jika Online, atau SQLite jika Offline
+        if (currentSettings.getMode().equals(GameSettings.ONLINE)) {
+            // Ambil data dari MySQL
+            Object[] onlineData = MySQLManager.getInitialPlayerData(username, diff);
+            initialBullets = (int) onlineData[2]; // Index 2 adalah remaining_bullets
+            System.out.println("[ONLINE] Memulai sesi. Peluru terakhir di server: " + initialBullets);
+        } else {
+            // Ambil data dari SQLite
+            initialBullets = SQLiteManager.getLastBulletCount(username, diff);
+            System.out.println("[OFFLINE] Memulai sesi. Peluru terakhir di lokal: " + initialBullets);
+        }
+
+        // 2. Buat objek Player dengan initialBullets yang sudah disaring
+        // Score dan Missed otomatis 0 sesuai constructor Player(String, int)
         Player player = new Player(username, initialBullets); 
+        
         final GamePanel[] gamePanelRef = new GamePanel[1];
 
         ActionListener quitAction = e -> showMenu();
@@ -113,8 +128,9 @@ public class Main {
 
         gamePanelRef[0] = new GamePanel(quitAction, settingsAction, restartAction);
         
+        // 3. Logic Simpan Data saat Game Over
         Runnable onGameOver = () -> {
-            // 1. Simpan ke SQLite Lokal (Selalu dilakukan sebagai backup/riwayat)
+            // Selalu simpan ke SQLite sebagai backup lokal
             SQLiteManager.saveScore(
                 player.getUsername(),
                 player.getScore(),
@@ -125,9 +141,8 @@ public class Main {
                 currentSettings.getMode()
             );
 
-            // 2. Simpan ke MySQL Online jika mode Online aktif
+            // Simpan ke MySQL hanya jika mode ONLINE
             if (currentSettings.getMode().equals(GameSettings.ONLINE)) {
-                // Menjalankan proses jaringan di thread berbeda agar UI tidak freeze
                 new Thread(() -> {
                     MySQLManager.saveScoreOnline(
                         player.getUsername(),
