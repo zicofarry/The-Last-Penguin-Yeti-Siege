@@ -7,8 +7,6 @@ import com.lastpenguin.presenter.InputHandler;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 
@@ -18,6 +16,8 @@ public class GamePanel extends JPanel {
     private BufferedImage arenaImg, penguinSheet, lubangImg, rockImg, spikeImg;
     private BufferedImage ballPImg, ballYImg, ballGiantImg;
     private BufferedImage meteorImg, targetImg;
+    private BufferedImage playerBarImg, skill1Img, skill2Img, skill3Img, aimArrowImg;
+    private BufferedImage buffSkill1Vfx; // ASET BARU UNTUK BUFF SKILL 1
     private Image pauseBgImage; 
     private Image gameOverBgImage; 
     private Font customFont;    
@@ -159,6 +159,12 @@ public class GamePanel extends JPanel {
         ballGiantImg = AssetLoader.loadImage("projectiles/snowball_giant.png");
         meteorImg = AssetLoader.loadImage("projectiles/meteor.png");
         targetImg = AssetLoader.loadImage("vfx/meteor_target.png");
+        playerBarImg = AssetLoader.loadImage("ui/player_bar.png");
+        skill1Img = AssetLoader.loadImage("ui/skill1.png");
+        skill2Img = AssetLoader.loadImage("ui/skill2.png");
+        skill3Img = AssetLoader.loadImage("ui/skill3.png");
+        aimArrowImg = AssetLoader.loadImage("vfx/aim_arrow.png");
+        buffSkill1Vfx = AssetLoader.loadImage("vfx/buff_skill1.png"); // LOAD BUFF VFX
         try {
             customFont = Font.createFont(Font.TRUETYPE_FONT, new File("res/assets/fonts/icy_font.ttf")).deriveFont(18f);
         } catch (Exception e) { customFont = new Font("Arial", Font.BOLD, 18); }
@@ -174,7 +180,7 @@ public class GamePanel extends JPanel {
 
         if (arenaImg != null) g.drawImage(arenaImg, 0, 0, 800, 600, null);
 
-        // --- DRAW OBSTACLES WITH HP TEXT ---
+        // --- DRAW OBSTACLES ---
         for (Obstacle o : presenter.getObstacles()) {
             if (o.isHole()) {
                 g.drawImage(lubangImg, o.getX(), o.getY(), o.getWidth(), o.getHeight(), null);
@@ -183,7 +189,6 @@ public class GamePanel extends JPanel {
                 int padding = 15;
                 g.drawImage(currentImg, o.getX() - padding, o.getY() - padding, o.getWidth() + (padding * 2), o.getHeight() + (padding * 2), null);
                 
-                // MENGGAMBAR ANGKA HP
                 g.setColor(Color.WHITE);
                 g.setFont(new Font("Arial", Font.BOLD, 14));
                 String hpText = String.valueOf(o.getHp());
@@ -191,7 +196,6 @@ public class GamePanel extends JPanel {
                 int textX = o.getX() + (o.getWidth() - fm.stringWidth(hpText)) / 2;
                 int textY = o.getY() + (o.getHeight() + fm.getAscent()) / 2;
                 
-                // Shadow text agar terbaca di background es
                 g.setColor(new Color(0, 0, 0, 150));
                 g.drawString(hpText, textX + 1, textY + 1);
                 g.setColor(Color.WHITE);
@@ -199,58 +203,70 @@ public class GamePanel extends JPanel {
             }
         }
 
-        // RENDER TARGET METEOR (Jika mode aktif)
+        // --- TARGET & METEOR ---
         if (presenter.isTargetingMeteor()) {
-            int mx = presenter.getInput().getMouseX();
-            int my = presenter.getInput().getMouseY();
-            g.drawImage(targetImg, mx - 40, my - 40, 80, 80 , null);
+            g.drawImage(targetImg, presenter.getInput().getMouseX() - 40, presenter.getInput().getMouseY() - 40, 80, 80 , null);
         }
-
-        // RENDER METEOR YANG SEDANG JATUH
         for (Meteor m : presenter.getActiveMeteors()) {
             g.drawImage(meteorImg, m.getX(), m.getY(), 80, 80, null);
         }
 
-        // --- DRAW PROJECTILES ---
+        // --- PROJECTILES ---
         for (Projectile p : presenter.getProjectiles()) {
-            BufferedImage currentBall;
-            int size;
-
-            if (p.isPiercing()) {
-                // PERUBAHAN: Ukuran diperbesar dari 40 menjadi 80
-                currentBall = ballGiantImg;
-                size = 80; 
-            } else if (p.getOwner().equals(Projectile.YETI_TYPE)) {
-                currentBall = ballYImg;
-                size = 20; // Sedikit diperbesar juga agar terlihat jelas
-            } else {
-                currentBall = ballPImg;
-                size = 15; // Sedikit diperbesar juga
-            }
-
-            if (currentBall != null) {
-                g.drawImage(currentBall, p.getX(), p.getY(), size, size, null);
-            } else {
-                // Fallback jika gambar error
-                g.setColor(p.getOwner().equals(Projectile.YETI_TYPE) ? Color.CYAN : Color.YELLOW);
-                g.fillOval(p.getX(), p.getY(), size, size);
-            }
+            BufferedImage cb = p.isPiercing() ? ballGiantImg : (p.getOwner().equals(Projectile.YETI_TYPE) ? ballYImg : ballPImg);
+            int sz = p.isPiercing() ? 80 : (p.getOwner().equals(Projectile.YETI_TYPE) ? 20 : 15);
+            g.drawImage(cb, p.getX(), p.getY(), sz, sz, null);
         }
-        // --- DRAW YETIS ---
+
+        // --- YETIS ---
         for (Yeti y : presenter.getYetis()) {
-            int index = y.getSpriteIndex();
-            if (yetiSprites != null && index < yetiSprites.length) {
-                g.drawImage(yetiSprites[index], y.getX(), y.getY(), 75, 75, null);
+            int idx = y.getSpriteIndex();
+            if (yetiSprites != null && idx < yetiSprites.length) {
+                g.drawImage(yetiSprites[idx], y.getX(), y.getY(), 75, 75, null);
             }
         }
 
+        // --- PENGUIN & AIM ARROW ---
         if (presenter.getPlayer().isAlive()) {
-            if (presenter.getPlayer().isGhost()) g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+            Player p = presenter.getPlayer();
+            
+            // Logika Transparansi (Ghost / Invisible)
+            if (p.isGhost()) {
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+            }
+            
+            // 1. DRAW BUFF SKILL 1 (Aura dibelakang Penguin)
+            if (p.isGiantBuffActive() && buffSkill1Vfx != null) {
+                int buffSize = 110; // Ukuran aura buff
+                int bx = p.getX() + 25 - (buffSize / 2); // Center X terhadap penguin (50/2 = 25)
+                int by = p.getY() + 25 - (buffSize / 2); // Center Y
+                
+                // Sedikit animasi pulsing sederhana agar buff terlihat 'hidup'
+                float pulse = (float) Math.sin(System.currentTimeMillis() * 0.005) * 5;
+                g2.drawImage(buffSkill1Vfx, (int)(bx - pulse/2), (int)(by - pulse/2), (int)(buffSize + pulse), (int)(buffSize + pulse), null);
+            }
+
+            // 2. DRAW AIM ARROW
+            if (aimArrowImg != null) {
+                int px = p.getX() + 25;
+                int py = p.getY() + 25;
+                double angle = Math.atan2(presenter.getInput().getMouseY() - py, presenter.getInput().getMouseX() - px);
+                Graphics2D gA = (Graphics2D) g2.create();
+                gA.translate(px, py);
+                gA.rotate(angle);
+                gA.drawImage(aimArrowImg, 35, -15, 30, 30, null);
+                gA.dispose();
+            }
+
+            // 3. DRAW PENGUIN SPRITE
             drawPenguin(g);
+            
+            // Reset Transparansi ke normal
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
         }
 
-        hud.draw(g, presenter.getPlayer());
+        // --- HUD UPDATE ---
+        hud.draw(g, presenter.getPlayer(), customFont, playerBarImg, skill1Img, skill2Img, skill3Img, ballPImg);
 
         if (presenter.getInput().isPaused() || !presenter.getPlayer().isAlive()) {
             g.setColor(new Color(0, 0, 0, 150)); 

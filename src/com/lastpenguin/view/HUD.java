@@ -1,100 +1,107 @@
-/**
- * Copyright (c) 2025 Muhammad 'Azmi Salam. All Rights Reserved.
- * Email: mhmmdzmslm36@gmail.com
- * GitHub: https://github.com/zicofarry
- */
 package com.lastpenguin.view;
 
 import com.lastpenguin.model.Player;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 
 /**
- * Responsible for rendering the Heads-Up Display (HUD) on the game screen.
- * Displays real-time statistics such as score, ammunition, and player info.
- * * @author Muhammad 'Azmi Salam
- * @version 1.0
- * @since December 2025
+ * HUD dengan perbaikan aspect ratio player_bar dan teks warna gelap.
  */
 public class HUD {
-
     private Font mainFont;
     private Font labelFont;
+    // Warna gelap yang konsisten untuk seluruh UI
+    private final Color DARK_TEXT = new Color(40, 45, 50); 
 
-    /**
-     * Initializes HUD fonts and styling.
-     */
     public HUD() {
         this.mainFont = new Font("Arial", Font.BOLD, 18);
         this.labelFont = new Font("Arial", Font.PLAIN, 14);
     }
 
-    /**
-     * Draws the HUD elements onto the screen.
-     * @param g The graphics object from GamePanel.
-     * @param player The player instance to pull data from.
-     */
-    public void draw(Graphics g, Player player) {
-        // Draw Semi-transparent background for readability
-        g.setColor(new Color(0, 0, 0, 100)); // Black with 100/255 alpha
-        g.fillRect(10, 10, 220, 120);
+    public void draw(Graphics g, Player player, Font icyFont, BufferedImage bar, BufferedImage s1, BufferedImage s2, BufferedImage s3, BufferedImage ballIcon) {
+        Graphics2D g2 = (Graphics2D) g;
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Draw Border
-        g.setColor(Color.WHITE);
-        g.drawRect(10, 10, 220, 120);
+        Font displayFont = (icyFont != null) ? icyFont : mainFont;
 
-        // Set Text Color
-        g.setColor(Color.WHITE);
+        // 1. Player Bar (Kiri Atas)
+        if (bar != null) {
+            // Ukuran disesuaikan agar tidak gepeng (Proporsi asli sekitar 350x190 atau skala yang mirip)
+            int barWidth = 200;
+            int barHeight = 150; 
+            int startX = 5;
+            int startY = 0;
 
-        // 1. Username
-        g.setFont(mainFont);
-        g.drawString(player.getUsername(), 20, 35);
+            g2.drawImage(bar, startX, startY, barWidth, barHeight, null);
+            
+            // Set warna teks jadi Gelap
+            g2.setColor(DARK_TEXT);
+            
+            // Username (Baris Atas)
+            g2.setFont(displayFont.deriveFont(Font.BOLD, 23f));
+            g2.drawString(player.getUsername(), startX + 65, startY + 45);
+            
+            // Score (Baris Tengah)
+            g2.setFont(displayFont.deriveFont(13f));
+            g2.drawString("SCORE: " + player.getScore(), startX + 40, startY + 75);
+            
+            // Bullets (Baris Bawah)
+            g2.drawString("BULLETS: " + player.getRemainingBullets(), startX + 40, startY + 105);
+        }
 
-        // 2. Score
-        g.setFont(labelFont);
-        g.drawString("Score: " + player.getScore(), 20, 60);
+        // 2. Skill Icons (Kanan Atas)
+        int skillStartX = 480; 
+        int skillY = 20;
+        int spacing = 100; 
 
-        // 3. Ammunition (Remaining Bullets)
-        g.drawString("Remaining Bullets: " + player.getRemainingBullets(), 20, 80);
-
-        // 4. Missed Shots
-        g.setColor(new Color(255, 150, 150)); // Light red for misses
-        g.drawString("Missed Shots: " + player.getMissedShots(), 20, 100);
-
-        // 5. Yeti Killed
-        g.setColor(Color.CYAN);
-        g.drawString("Yeti Killed: " + player.getYetiKilled(), 20, 120);
-        
-        // Draw Health Bar (Bonus for visual feedback)
-        drawHealthBar(g, player.getHealth());
-        int startX = 600, startY = 500;
-        g.setFont(labelFont);
-        drawSkillIcon(g, "1. Snowball", player.getCooldownS1(), startX, startY);
-        drawSkillIcon(g, "2. Meteor", player.getCooldownS2(), startX, startY + 25);
-        drawSkillIcon(g, "3. Ghost", player.getCooldownS3(), startX, startY + 50);
+        drawSkillItem(g2, s1, ballIcon, "GIANT 5", player.getCooldownS1(), 5, player.getRemainingBullets(), skillStartX, skillY, displayFont);
+        drawSkillItem(g2, s2, ballIcon, "METEOR 10", player.getCooldownS2(), 10, player.getRemainingBullets(), skillStartX + spacing, skillY, displayFont);
+        drawSkillItem(g2, s3, ballIcon, "INVISIBLE 3", player.getCooldownS3(), 3, player.getRemainingBullets(), skillStartX + (spacing * 2), skillY, displayFont);
     }
 
-    /**
-     * Visual representation of player's health.
-     */
-    private void drawHealthBar(Graphics g, int health) {
-        g.setColor(Color.GRAY);
-        g.fillRect(580, 20, 200, 20); // Background
-        
-        if (health > 50) g.setColor(Color.GREEN);
-        else if (health > 25) g.setColor(Color.YELLOW);
-        else g.setColor(Color.RED);
-        
-        g.fillRect(580, 20, (int) (health * 2), 20); // Health fill
-        g.setColor(Color.WHITE);
-        g.drawRect(580, 20, 200, 20); // Outline
-        g.drawString("HP", 555, 35);
-    }
+    private void drawSkillItem(Graphics2D g2, BufferedImage icon, BufferedImage ball, String label, int cd, int req, int ammo, int x, int y, Font font) {
+        boolean canUse = (cd == 0 && ammo >= req);
+        int size = 80; // Ukuran icon skill
 
-    private void drawSkillIcon(Graphics g, String name, int cooldown, int x, int y) {
-        g.setColor(cooldown > 0 ? Color.GRAY : Color.GREEN);
-        String status = cooldown > 0 ? (cooldown/60) + "s" : "READY";
-        g.drawString(name + ": " + status, x, y);
+        // Set Transparansi Icon
+        if (!canUse) {
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.4f));
+        } else {
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+        }
+
+        // Gambar Icon Skill
+        if (icon != null) g2.drawImage(icon, x, y, size, size, null);
+
+        // A. Gambar Angka Cooldown
+        if (cd > 0) {
+            g2.setColor(DARK_TEXT);
+            g2.setFont(font.deriveFont(Font.BOLD, 24f));
+            FontMetrics fm = g2.getFontMetrics();
+            String cdText = String.valueOf((cd / 60) + 1);
+            int tx = x + (size - fm.stringWidth(cdText)) / 2;
+            int ty = y + (size / 2) + (fm.getAscent() / 2) - 2;
+            g2.drawString(cdText, tx, ty);
+        }
+
+        // B. Gambar Label Teks di Bawah Skill
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+        g2.setFont(font.deriveFont(Font.BOLD, 11f));
+        g2.setColor(DARK_TEXT); 
+        
+        String[] parts = label.split(" "); 
+        String namePart = parts[0];
+        String numPart = parts[1];
+        
+        int labelY = y + size + 18;
+        int totalTextWidth = g2.getFontMetrics().stringWidth(namePart + " " + numPart) + 16;
+        int startTextX = x + (size - totalTextWidth) / 2;
+
+        g2.drawString(namePart + " " + numPart, startTextX, labelY);
+        
+        if (ball != null) {
+            int ballX = startTextX + g2.getFontMetrics().stringWidth(namePart + " " + numPart) + 4;
+            g2.drawImage(ball, ballX, labelY - 10, 12, 12, null);
+        }
     }
 }
