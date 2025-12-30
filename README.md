@@ -101,7 +101,7 @@ Aplikasi beroperasi melalui urutan proses berikut:
 4. **Sinkronisasi Data**: Saat *Game Over*, skor secara otomatis disimpan ke SQLite lokal. Jika dalam mode Online, data juga dikirim ke server MySQL melalui *background thread* untuk mencegah UI membeku.
 
 
-## 5. Fitur Utama
+## 5. Fitur Bonus
 
 * **Sistem High Score & Leaderboard**:
   1. Leaderboard Lokal: Menyimpan riwayat skor tertinggi berdasarkan tingkat kesulitan di SQLite lokal.
