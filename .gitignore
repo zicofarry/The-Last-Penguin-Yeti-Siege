@@ -1,1 +1,13 @@
 bin/
+build/
+dist/
+installer/
+
+# Database files (local data)
+data/*.db
+
+# Build artifacts
+*.jar
+
+# Config with credentials
+config.properties

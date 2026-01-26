@@ -3,17 +3,43 @@ package com.lastpenguin.model;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
+import java.io.FileInputStream;
+import java.io.IOException;
 
 /**
  * Manages remote database interactions using MySQL.
- * Facilitates player data synchronization, global high-score tracking, 
+ * Facilitates player data synchronization, global high-score tracking,
  * and server availability checks for the Online game mode.
  */
 public class MySQLManager {
-    // Database connection configurations
-    private static final String URL = "jdbc:mysql://localhost:3306/antarctica";
-    private static final String USER = "root"; 
-    private static final String PASSWORD = ""; 
+    // Database connection configurations loaded from config.properties
+    private static String URL;
+    private static String USER;
+    private static String PASSWORD;
+
+    static {
+        loadConfig();
+    }
+
+    /**
+     * Loads database configuration from config.properties file.
+     */
+    private static void loadConfig() {
+        Properties props = new Properties();
+        try (FileInputStream fis = new FileInputStream("config.properties")) {
+            props.load(fis);
+            URL = props.getProperty("db.url", "jdbc:mysql://localhost:3306/railway");
+            USER = props.getProperty("db.user", "root");
+            PASSWORD = props.getProperty("db.password", "");
+            System.out.println("[CONFIG] Database configuration loaded successfully.");
+        } catch (IOException e) {
+            System.err.println("[CONFIG] Could not load config.properties, using defaults: " + e.getMessage());
+            URL = "jdbc:mysql://localhost:3306/railway";
+            USER = "root";
+            PASSWORD = "";
+        }
+    }
 
     /**
      * Establishes a connection to the MySQL server.
@@ -24,24 +50,24 @@ public class MySQLManager {
 
     /**
      * Retrieves the initial player state to begin a game session.
-     * Ammunition is fetched from the last recorded session, while score 
+     * Ammunition is fetched from the last recorded session, while score
      * and missed shots are retrieved from the historical high-score record.
      */
     public static Object[] getInitialPlayerData(String username, String difficulty) {
         // Default values: [score, missed, bullets]
-        Object[] data = new Object[]{0, 0, 0}; 
+        Object[] data = new Object[] { 0, 0, 0 };
 
         String selectPlayerSql = "SELECT id FROM players WHERE username = ?";
-        
+
         // Query to retrieve ammunition from the most recent session
         String lastSessionSql = "SELECT remaining_bullets FROM scores " +
-                                "WHERE player_id = ? AND difficulty = ? " +
-                                "ORDER BY played_at DESC LIMIT 1";
-        
+                "WHERE player_id = ? AND difficulty = ? " +
+                "ORDER BY played_at DESC LIMIT 1";
+
         // Query to retrieve the highest score and its associated missed shots
         String highscoreSql = "SELECT score, missed_shots FROM scores " +
-                              "WHERE player_id = ? AND difficulty = ? " +
-                              "ORDER BY score DESC, played_at DESC LIMIT 1";
+                "WHERE player_id = ? AND difficulty = ? " +
+                "ORDER BY score DESC, played_at DESC LIMIT 1";
 
         try (Connection conn = connect()) {
             // 1. Identify the Player ID based on the provided username
@@ -49,7 +75,8 @@ public class MySQLManager {
             try (PreparedStatement ps = conn.prepareStatement(selectPlayerSql)) {
                 ps.setString(1, username);
                 ResultSet rs = ps.executeQuery();
-                if (rs.next()) playerId = rs.getInt("id");
+                if (rs.next())
+                    playerId = rs.getInt("id");
             }
 
             // 2. If the player exists, populate the data array from existing records
@@ -83,13 +110,15 @@ public class MySQLManager {
 
     /**
      * Persists the current game session results to the remote MySQL database.
-     * Ensures the player is registered in the database before inserting session records.
+     * Ensures the player is registered in the database before inserting session
+     * records.
      */
     public static void saveScoreOnline(String username, int score, int killed, int missed, int bullets, String diff) {
         String insertPlayerSql = "INSERT IGNORE INTO players (username) VALUES (?)";
         String selectPlayerSql = "SELECT id FROM players WHERE username = ?";
-        String insertScoreSql = "INSERT INTO scores (player_id, score, missed_shots, remaining_bullets, yeti_killed, difficulty, mode) " +
-                                "VALUES (?, ?, ?, ?, ?, ?, 'ONLINE')";
+        String insertScoreSql = "INSERT INTO scores (player_id, score, missed_shots, remaining_bullets, yeti_killed, difficulty, mode) "
+                +
+                "VALUES (?, ?, ?, ?, ?, ?, 'ONLINE')";
 
         try (Connection conn = connect()) {
             // Ensure the player is registered in the system
@@ -103,7 +132,8 @@ public class MySQLManager {
             try (PreparedStatement ps = conn.prepareStatement(selectPlayerSql)) {
                 ps.setString(1, username);
                 ResultSet rs = ps.executeQuery();
-                if (rs.next()) playerId = rs.getInt("id");
+                if (rs.next())
+                    playerId = rs.getInt("id");
             }
 
             // Execute the score insertion if player identity is confirmed
@@ -126,38 +156,40 @@ public class MySQLManager {
 
     /**
      * Retrieves the Global Leaderboard entries.
-     * Aggregates data to display the highest historical score alongside the 
-     * ammunition count from the player's most recent session using window functions.
+     * Aggregates data to display the highest historical score alongside the
+     * ammunition count from the player's most recent session using window
+     * functions.
      */
     public static List<Object[]> getGlobalLeaderboard(String difficulty) {
         List<Object[]> data = new ArrayList<>();
-        
-        // Complex query utilizing ROW_NUMBER() to synchronize high-scores and latest session data
+
+        // Complex query utilizing ROW_NUMBER() to synchronize high-scores and latest
+        // session data
         String sql = "SELECT p.username, hs.score, hs.missed_shots, ls.remaining_bullets " +
-                     "FROM players p " +
-                     "JOIN (" +
-                     "    SELECT player_id, score, missed_shots, " +
-                     "    ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY score DESC, played_at DESC) as rn " +
-                     "    FROM scores WHERE mode = 'ONLINE' AND difficulty = ?" +
-                     ") hs ON p.id = hs.player_id AND hs.rn = 1 " +
-                     "JOIN (" +
-                     "    SELECT player_id, remaining_bullets, " +
-                     "    ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY played_at DESC) as rn " +
-                     "    FROM scores WHERE mode = 'ONLINE' AND difficulty = ?" +
-                     ") ls ON p.id = ls.player_id AND ls.rn = 1 " +
-                     "ORDER BY hs.score DESC LIMIT 50";
+                "FROM players p " +
+                "JOIN (" +
+                "    SELECT player_id, score, missed_shots, " +
+                "    ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY score DESC, played_at DESC) as rn " +
+                "    FROM scores WHERE mode = 'ONLINE' AND difficulty = ?" +
+                ") hs ON p.id = hs.player_id AND hs.rn = 1 " +
+                "JOIN (" +
+                "    SELECT player_id, remaining_bullets, " +
+                "    ROW_NUMBER() OVER (PARTITION BY player_id ORDER BY played_at DESC) as rn " +
+                "    FROM scores WHERE mode = 'ONLINE' AND difficulty = ?" +
+                ") ls ON p.id = ls.player_id AND ls.rn = 1 " +
+                "ORDER BY hs.score DESC LIMIT 50";
 
         try (Connection conn = connect(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, difficulty); 
-            ps.setString(2, difficulty); 
+            ps.setString(1, difficulty);
+            ps.setString(2, difficulty);
             ResultSet rs = ps.executeQuery();
-            
+
             while (rs.next()) {
-                data.add(new Object[]{
-                    rs.getString("username"),
-                    rs.getInt("score"),            
-                    rs.getInt("missed_shots"),     
-                    rs.getInt("remaining_bullets") 
+                data.add(new Object[] {
+                        rs.getString("username"),
+                        rs.getInt("score"),
+                        rs.getInt("missed_shots"),
+                        rs.getInt("remaining_bullets")
                 });
             }
         } catch (SQLException e) {
