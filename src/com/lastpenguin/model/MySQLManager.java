@@ -24,21 +24,51 @@ public class MySQLManager {
 
     /**
      * Loads database configuration from config.properties file.
+     * Searches in multiple locations to support both development and installed
+     * environments.
      */
     private static void loadConfig() {
         Properties props = new Properties();
-        try (FileInputStream fis = new FileInputStream("config.properties")) {
-            props.load(fis);
-            URL = props.getProperty("db.url", "jdbc:mysql://localhost:3306/railway");
-            USER = props.getProperty("db.user", "root");
-            PASSWORD = props.getProperty("db.password", "");
-            System.out.println("[CONFIG] Database configuration loaded successfully.");
-        } catch (IOException e) {
-            System.err.println("[CONFIG] Could not load config.properties, using defaults: " + e.getMessage());
-            URL = "jdbc:mysql://localhost:3306/railway";
-            USER = "root";
-            PASSWORD = "";
+        String[] configPaths = getConfigPaths();
+
+        for (String path : configPaths) {
+            try (FileInputStream fis = new FileInputStream(path)) {
+                props.load(fis);
+                URL = props.getProperty("db.url", "jdbc:mysql://localhost:3306/railway");
+                USER = props.getProperty("db.user", "root");
+                PASSWORD = props.getProperty("db.password", "");
+                System.out.println("[CONFIG] Loaded from: " + path);
+                return;
+            } catch (IOException e) {
+                // Try next path
+            }
         }
+
+        System.err.println("[CONFIG] config.properties not found in any location, using defaults");
+        URL = "jdbc:mysql://localhost:3306/railway";
+        USER = "root";
+        PASSWORD = "";
+    }
+
+    /**
+     * Returns possible config file locations.
+     */
+    private static String[] getConfigPaths() {
+        String userDir = System.getProperty("user.dir");
+        String jarDir = "";
+        try {
+            jarDir = new java.io.File(MySQLManager.class.getProtectionDomain()
+                    .getCodeSource().getLocation().toURI()).getParent();
+        } catch (Exception e) {
+            jarDir = userDir;
+        }
+
+        return new String[] {
+                "config.properties", // Current directory
+                userDir + "/config.properties", // User directory
+                jarDir + "/config.properties", // JAR/app directory
+                System.getProperty("user.home") + "/config.properties" // Home directory
+        };
     }
 
     /**

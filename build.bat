@@ -7,7 +7,8 @@ echo ============================================
 echo.
 
 :: Configuration
-set APP_NAME=TheLastPenguin
+set APP_NAME=The Last Penguin - Yeti Siege
+set JAR_NAME=TheLastPenguin
 set MAIN_CLASS=com.lastpenguin.Main
 set VERSION=1.0.0
 
@@ -49,7 +50,7 @@ xcopy /s /e /q /y res\* build\ >nul
 :: Create JAR file
 echo [5/5] Creating JAR file...
 copy lib\*.jar dist\lib\ >nul
-jar cfm dist\%APP_NAME%.jar MANIFEST.MF -C build .
+jar cfm dist\%JAR_NAME%.jar MANIFEST.MF -C build .
 if errorlevel 1 (
     echo ERROR: JAR creation failed!
     pause
@@ -61,11 +62,11 @@ echo ============================================
 echo   BUILD SUCCESSFUL!
 echo ============================================
 echo.
-echo JAR file created: dist\%APP_NAME%.jar
+echo JAR file created: dist\%JAR_NAME%.jar
 echo.
 echo To run the game:
 echo   cd dist
-echo   java -jar %APP_NAME%.jar
+echo   java -jar %JAR_NAME%.jar
 echo.
 echo ============================================
 echo   Creating Windows Installer (EXE)...
@@ -79,7 +80,7 @@ if errorlevel 1 (
     echo You need JDK 14+ to create EXE installer.
     echo.
     echo You can still run the game using:
-    echo   java -jar dist\%APP_NAME%.jar
+    echo   java -jar dist\%JAR_NAME%.jar
     echo.
     pause
     exit /b 0
@@ -98,10 +99,11 @@ jpackage ^
     --type exe ^
     --name "%APP_NAME%" ^
     --app-version %VERSION% ^
-    --vendor "Last Penguin Studio" ^
+    --vendor "zicofarry" ^
     --description "The Last Penguin: Yeti Siege - A Java Game" ^
+    --icon icon.ico ^
     --input dist ^
-    --main-jar %APP_NAME%.jar ^
+    --main-jar %JAR_NAME%.jar ^
     --main-class %MAIN_CLASS% ^
     --dest installer ^
     --win-dir-chooser ^

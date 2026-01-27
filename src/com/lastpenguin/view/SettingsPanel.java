@@ -10,13 +10,14 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.io.File;
 import java.io.IOException;
 
 /**
  * Handles the graphical settings interface.
- * Provides controls for game mechanics, audio preferences, and custom keybindings
- * while ensuring all modifications are synchronized with the GameSettings model.
+ * Provides controls for game mechanics, audio preferences, and custom
+ * keybindings
+ * while ensuring all modifications are synchronized with the GameSettings
+ * model.
  */
 public class SettingsPanel extends JPanel {
 
@@ -28,7 +29,7 @@ public class SettingsPanel extends JPanel {
     private JComboBox<String> diffBox, modeBox;
     private JButton musicBtn, sfxBtn, mouseBtn;
     private JButton btnKeyS1, btnKeyS2, btnKeyS3;
-    
+
     private boolean musicOn, sfxOn, mouseOn;
     private int tempKeyS1, tempKeyS2, tempKeyS3;
 
@@ -47,35 +48,37 @@ public class SettingsPanel extends JPanel {
         tempKeyS3 = current.getKeyS3();
 
         // Coordinate definitions for component alignment within the background assets
-        int labelX = 200; 
-        int controlX = 440; 
-        int startY = 150; 
-        int gapY = 40; 
+        int labelX = 200;
+        int controlX = 440;
+        int startY = 150;
+        int gapY = 40;
 
         // --- ROW 1: DIFFICULTY CONFIGURATION ---
         addLabel("Difficulty:", labelX, startY);
-        diffBox = new JComboBox<>(new String[]{GameSettings.EASY, GameSettings.MEDIUM, GameSettings.HARD});
+        diffBox = new JComboBox<>(new String[] { GameSettings.EASY, GameSettings.MEDIUM, GameSettings.HARD });
         diffBox.setSelectedItem(current.getDifficulty());
         diffBox.setBounds(controlX, startY, 170, 30);
-        styleComboBox(diffBox); 
+        styleComboBox(diffBox);
         diffBox.addActionListener(e -> {
             soundManager.playEffect("sfx_click.wav");
             onChange.run();
         });
-        if (isIngame) diffBox.setEnabled(false);
+        if (isIngame)
+            diffBox.setEnabled(false);
         add(diffBox);
 
         // --- ROW 2: GAME MODE SELECTION ---
         addLabel("Game Mode:", labelX, startY + gapY);
-        modeBox = new JComboBox<>(new String[]{GameSettings.OFFLINE, GameSettings.ONLINE});
+        modeBox = new JComboBox<>(new String[] { GameSettings.OFFLINE, GameSettings.ONLINE });
         modeBox.setSelectedItem(current.getMode());
         modeBox.setBounds(controlX, startY + gapY, 170, 30);
-        styleComboBox(modeBox); 
+        styleComboBox(modeBox);
         modeBox.addActionListener(e -> {
             soundManager.playEffect("sfx_click.wav");
             onChange.run();
         });
-        if (isIngame) modeBox.setEnabled(false);
+        if (isIngame)
+            modeBox.setEnabled(false);
         add(modeBox);
 
         // --- ROW 3, 4, 5: AUDIO AND CONTROL TOGGLES ---
@@ -139,12 +142,15 @@ public class SettingsPanel extends JPanel {
     }
 
     /**
-     * Loads required external assets including background graphics and custom fonts.
+     * Loads required external assets including background graphics and custom
+     * fonts.
      */
     private void loadResources() {
         try {
-            backgroundImage = new ImageIcon("res/assets/images/ui/settings_bg.png").getImage();
-            customFont = Font.createFont(Font.TRUETYPE_FONT, new File("res/assets/fonts/icy_font.ttf")).deriveFont(18f);
+            backgroundImage = new ImageIcon(getClass().getResource("/assets/images/ui/settings_bg.png")).getImage();
+            customFont = Font
+                    .createFont(Font.TRUETYPE_FONT, getClass().getResourceAsStream("/assets/fonts/icy_font.ttf"))
+                    .deriveFont(18f);
             GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
             ge.registerFont(customFont);
         } catch (Exception e) {
@@ -154,15 +160,15 @@ public class SettingsPanel extends JPanel {
     }
 
     /**
-     * Applies custom styling to ComboBox components to ensure visual 
+     * Applies custom styling to ComboBox components to ensure visual
      * consistency with the game's aesthetic.
      */
     private void styleComboBox(JComboBox<String> box) {
         box.setOpaque(false);
-        box.setBackground(new Color(0, 0, 0, 0)); 
-        box.setBorder(null); 
+        box.setBackground(new Color(0, 0, 0, 0));
+        box.setBorder(null);
         box.setFont(customFont.deriveFont(Font.BOLD, 14f));
-        box.setForeground(new Color(60, 40, 20)); 
+        box.setForeground(new Color(60, 40, 20));
 
         box.setUI(new BasicComboBoxUI() {
             @Override
@@ -196,21 +202,23 @@ public class SettingsPanel extends JPanel {
 
         box.setRenderer(new DefaultListCellRenderer() {
             @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
+                    boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected,
+                        cellHasFocus);
                 label.setFont(customFont.deriveFont(14f));
                 label.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
 
                 if (index == -1) {
-                    label.setOpaque(false); 
+                    label.setOpaque(false);
                     label.setForeground(new Color(60, 40, 20));
                 } else {
                     label.setOpaque(true);
                     if (isSelected) {
-                        label.setBackground(new Color(180, 220, 255)); 
+                        label.setBackground(new Color(180, 220, 255));
                         label.setForeground(Color.BLACK);
                     } else {
-                        label.setBackground(new Color(245, 250, 255)); 
+                        label.setBackground(new Color(245, 250, 255));
                         label.setForeground(new Color(60, 40, 20));
                     }
                 }
@@ -228,7 +236,8 @@ public class SettingsPanel extends JPanel {
     }
 
     /**
-     * Creates a transparent toggle button designed to blend with the background graphics.
+     * Creates a transparent toggle button designed to blend with the background
+     * graphics.
      */
     private JButton createToggleButton(boolean state, int x, int y) {
         JButton btn = new JButton(state ? "ON" : "OFF");
@@ -237,7 +246,7 @@ public class SettingsPanel extends JPanel {
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setContentAreaFilled(false);
-        btn.setBorder(null); 
+        btn.setBorder(null);
         btn.setForeground(new Color(60, 40, 20));
         return btn;
     }
@@ -265,9 +274,12 @@ public class SettingsPanel extends JPanel {
             @Override
             public void keyPressed(KeyEvent e) {
                 int newKey = e.getKeyCode();
-                if (skillNum == 1) tempKeyS1 = newKey;
-                if (skillNum == 2) tempKeyS2 = newKey;
-                if (skillNum == 3) tempKeyS3 = newKey;
+                if (skillNum == 1)
+                    tempKeyS1 = newKey;
+                if (skillNum == 2)
+                    tempKeyS2 = newKey;
+                if (skillNum == 3)
+                    tempKeyS3 = newKey;
                 btn.setText(KeyEvent.getKeyText(newKey));
                 SettingsPanel.this.requestFocusInWindow();
                 onChange.run();
@@ -276,14 +288,37 @@ public class SettingsPanel extends JPanel {
         return btn;
     }
 
-    public String getSelectedDifficulty() { return (String) diffBox.getSelectedItem(); }
-    public String getSelectedMode() { return (String) modeBox.getSelectedItem(); }
-    public boolean isMusicEnabled() { return musicOn; }
-    public boolean isSfxEnabled() { return sfxOn; }
-    public boolean isMouseEnabled() { return mouseOn; }
-    public int getS1Key() { return tempKeyS1; }
-    public int getS2Key() { return tempKeyS2; }
-    public int getS3Key() { return tempKeyS3; }
+    public String getSelectedDifficulty() {
+        return (String) diffBox.getSelectedItem();
+    }
+
+    public String getSelectedMode() {
+        return (String) modeBox.getSelectedItem();
+    }
+
+    public boolean isMusicEnabled() {
+        return musicOn;
+    }
+
+    public boolean isSfxEnabled() {
+        return sfxOn;
+    }
+
+    public boolean isMouseEnabled() {
+        return mouseOn;
+    }
+
+    public int getS1Key() {
+        return tempKeyS1;
+    }
+
+    public int getS2Key() {
+        return tempKeyS2;
+    }
+
+    public int getS3Key() {
+        return tempKeyS3;
+    }
 
     @Override
     protected void paintComponent(Graphics g) {
